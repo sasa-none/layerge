@@ -17,7 +17,7 @@ test('closeTop({restoreUrl:false}) keeps URL while restoring underlying presente
     // Close the replace presenter without restoring URL.
     await page.getByTestId('mixed-replace-close-norestore').click();
 
-    // URL should remain at the fakePath, but the underlying presenter should be revealed.
+    // URL should remain at the url, but the underlying presenter should be revealed.
     await expect(page).toHaveURL(/\/mixed\/replace$/);
     await expect(page.getByTestId('mixed-replace-title')).toHaveCount(0);
     await expect(page.getByTestId('mixed-push-title')).toBeVisible();

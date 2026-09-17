@@ -6,7 +6,7 @@ import {readStressIters} from './_helpers/stressEnv.js';
  * Stress: repeat browser back/forward restore cycles.
  *
  * Goal: ensure repeated history navigation restores presenter correctly and does not crash.
- * Uses the existing home demo route (modal.push with fakePath).
+ * Uses the existing home demo route (modal.push with url).
  */
 
 test('v4: repeated back/forward restore cycles do not crash and restore the same entryId', async ({page}, testInfo) => {
@@ -55,13 +55,13 @@ test('v4: repeated back/forward restore cycles do not crash and restore the same
 
     const homeUrl = page.getByTestId('home-url');
     const overlay = page.getByTestId('overlay-presenter');
-    const fakeContent = page.getByTestId('fakepath-content');
+    const urlContent = page.getByTestId('url-overlay-content');
     const entryId = page.getByTestId('entry-id');
 
     const expectHome = async () => {
         await expect(page).toHaveURL(/\/$/);
         await expect(homeUrl).toHaveText('/');
-        await expect(fakeContent).toHaveCount(0);
+        await expect(urlContent).toHaveCount(0);
         await expect(overlay).toHaveCount(0);
     };
 
@@ -86,11 +86,11 @@ test('v4: repeated back/forward restore cycles do not crash and restore the same
         for (let i = 0; i < iters; i++) {
             currentIter = i;
 
-            // Open fakePath presenter (URL will move to /fake/help)
-            await page.getByTestId('modal-fakepath').click();
+            // Open the url presenter (URL will move to /fake/help)
+            await page.getByTestId('modal-url').click();
 
             await expect(page).toHaveURL(/\/fake\/help$/);
-            await expect(fakeContent).toBeVisible({timeout: 15_000});
+            await expect(urlContent).toBeVisible({timeout: 15_000});
             await expect(overlay).toBeVisible({timeout: 15_000});
 
             const before = await entryId.textContent();
@@ -102,7 +102,7 @@ test('v4: repeated back/forward restore cycles do not crash and restore the same
             // Forward restores presenter.
             await page.goForward();
             await expect(page).toHaveURL(/\/fake\/help$/);
-            await expect(fakeContent).toBeVisible({timeout: 15_000});
+            await expect(urlContent).toBeVisible({timeout: 15_000});
             await expect(overlay).toBeVisible({timeout: 15_000});
 
             const after = await entryId.textContent();

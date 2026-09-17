@@ -93,30 +93,25 @@
         <div class="Section">
             <h2 class="SubTitle">Modal (component / loader + url)</h2>
             <div class="Buttons">
-                <button type="button" class="Btn" data-testid="modal-fakepath" @click="openFakePath">
+                <button type="button" class="Btn" data-testid="modal-url" @click="openUrlComponent">
                     modal.push(Component, {url})
                 </button>
-                <button
-                    type="button"
-                    class="Btn"
-                    data-testid="modal-fakepath-loader"
-                    @click="openFakePathLoader"
-                >
+                <button type="button" class="Btn" data-testid="modal-url-loader" @click="openUrlLoader">
                     modal.push(loader, {url})
                 </button>
                 <button
                     type="button"
                     class="Btn"
-                    data-testid="modal-fakepath-loader-slow"
-                    @click="openFakePathLoaderSlow"
+                    data-testid="modal-url-loader-slow"
+                    @click="openUrlLoaderSlow"
                 >
                     modal.push(slowLoader, {url})
                 </button>
                 <button
                     type="button"
                     class="Btn"
-                    data-testid="modal-fakepath-loader-fail"
-                    @click="openFakePathLoaderFail"
+                    data-testid="modal-url-loader-fail"
+                    @click="openUrlLoaderFail"
                 >
                     modal.push(failingLoader, {url})
                 </button>
@@ -308,7 +303,7 @@ import MixedOpenRoot from '../presenters/MixedOpenRoot.vue';
 import {useLayerge} from 'layerge';
 import {lastAction, lastResult, trackNavigation} from '../navLog';
 
-import FakePathContent from '../presenters/FakePathContent.vue';
+import UrlOverlayContent from '../presenters/UrlOverlayContent.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -432,31 +427,31 @@ const navToPageA = () => {
     router.push('/page-a');
 };
 
-const openFakePath = () => {
+const openUrlComponent = () => {
     setAction("modal.push(Component, {url:'/fake/help'})");
     trackTo("modal.push(Component, {url:'/fake/help'})", '/fake/help');
-    router.modal.push(FakePathContent, {url: '/fake/help'});
+    router.modal.push(UrlOverlayContent, {url: '/fake/help'});
 };
 
-const openFakePathLoader = () => {
+const openUrlLoader = () => {
     setAction("modal.push(loader, {url:'/fake/help-async'})");
     trackTo("modal.push(loader, {url:'/fake/help-async'})", '/fake/help-async');
 
     const loader = () => {
-        return import('../presenters/FakePathContent.vue');
+        return import('../presenters/UrlOverlayContent.vue');
     };
 
     router.modal.push(loader, {url: '/fake/help-async'});
 };
 
-const openFakePathLoaderSlow = () => {
+const openUrlLoaderSlow = () => {
     setAction("modal.push(slowLoader, {url:'/fake/help-slow'})");
     trackTo("modal.push(slowLoader, {url:'/fake/help-slow'})", '/fake/help-slow');
 
     const slowLoader = () => {
         return new Promise((resolve) => {
             window.setTimeout(() => {
-                resolve(import('../presenters/FakePathContent.vue'));
+                resolve(import('../presenters/UrlOverlayContent.vue'));
             }, 1200);
         });
     };
@@ -464,7 +459,7 @@ const openFakePathLoaderSlow = () => {
     router.modal.push(slowLoader, {url: '/fake/help-slow'});
 };
 
-const openFakePathLoaderFail = () => {
+const openUrlLoaderFail = () => {
     setAction("modal.push(failingLoader, {url:'/fake/help-fail'})");
     trackTo("modal.push(failingLoader, {url:'/fake/help-fail'})", '/fake/help-fail');
 
@@ -482,7 +477,7 @@ const openFakePathLoaderFail = () => {
 const openUrlQueryHash = () => {
     setAction("modal.push(Component, {url:{query:{u:'1'},hash:'#h'}})");
     trackTo("modal.push(Component, {url:{query:{u:'1'},hash:'#h'}})", {path: '/', query: {u: '1'}, hash: '#h'});
-    router.modal.push(FakePathContent, {url: {query: {u: '1'}, hash: '#h'}});
+    router.modal.push(UrlOverlayContent, {url: {query: {u: '1'}, hash: '#h'}});
 };
 
 const openUrlNoop = () => {
@@ -490,7 +485,7 @@ const openUrlNoop = () => {
     // current fullPath を明示して指定（router-link準拠で no-op になる想定）
     const current = router.currentRoute.value.fullPath;
     trackTo("modal.push(Component, {url: current}) // no-op", current);
-    router.modal.push(FakePathContent, {url: current});
+    router.modal.push(UrlOverlayContent, {url: current});
 };
 
 const raceAThenB = () => {
@@ -635,7 +630,7 @@ const closeTopVsSlowLoader = () => {
     const slowLoader = () => {
         return new Promise((resolve) => {
             window.setTimeout(() => {
-                resolve(import('../presenters/FakePathContent.vue'));
+                resolve(import('../presenters/UrlOverlayContent.vue'));
             }, 1200);
         });
     };

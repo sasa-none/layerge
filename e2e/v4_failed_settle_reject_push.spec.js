@@ -26,7 +26,7 @@ test('v4: router.push reject is settled as failed (no pageerror)', async ({page}
     // When the current route has ?__fail=reject_push, demo router rejects push/replace.
     await page.goto('/v3-advanced?__fail=reject_push');
 
-    // Trigger a navigation (push via fakePath) which should reject.
+    // Trigger a navigation (push via url) which should reject.
     await page.getByTestId('v3-push').click();
 
     await expect.poll(() => oneLineOutcomes.some((l) => /status=failed\b/.test(l.text))).toBeTruthy();

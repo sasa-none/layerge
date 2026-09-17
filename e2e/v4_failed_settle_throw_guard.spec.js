@@ -25,7 +25,7 @@ test('v4: beforeEach throw is settled as failed (no pageerror)', async ({page}, 
 
     await page.goto('/v3-advanced?__fail=throw_guard');
 
-    // Trigger a navigation (push via fakePath) which should fail by throwing in beforeEach.
+    // Trigger a navigation (push via url) which should fail by throwing in beforeEach.
     await page.getByTestId('v3-push').click();
 
     await expect.poll(() => oneLineOutcomes.some((l) => /status=failed\b/.test(l.text))).toBeTruthy();

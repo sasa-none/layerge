@@ -8,11 +8,11 @@ test('modal.push(Component, {url: RouteLocationRaw}) updates URL (query/hash) an
     await page.getByTestId('modal-url-query-hash').click();
 
     await expect(page).toHaveURL(/\/\?u=1#h$/);
-    await expect(page.getByTestId('fakepath-content')).toBeVisible();
+    await expect(page.getByTestId('url-overlay-content')).toBeVisible();
     await expect(page.getByTestId('current-url')).toHaveText('/?u=1#h');
 
     await page.goBack();
 
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByTestId('fakepath-content')).toHaveCount(0);
+    await expect(page.getByTestId('url-overlay-content')).toHaveCount(0);
 });

@@ -778,7 +778,7 @@ pnpm dev
 
 The demo is the fastest way to validate **history integration**, **async consistency (latest-wins)**, and **URL integration** (bridge routes).
 
-> The demo app now uses `url`. Some E2E test ids and spec filenames still carry the older `fakepath` name; renaming them is tracked in `docs/roadmap.ja.md`.
+> The demo app and the E2E specs use `url` throughout. The deprecated `fakePath` option is still accepted by the library and is covered by the unit tests.
 
 ### Status panel (Home: `/`)
 
@@ -847,7 +847,7 @@ Close order:
 - `e2e/modal_open_component.spec.js`
 - `e2e/modal_open_mismatch.spec.js`
 - `e2e/stackcard_then_modal_close.spec.js`
-- `e2e/modal_replace_fakepath.spec.js`
+- `e2e/modal_replace_url.spec.js`
 
 ## Acceptance Criteria
 

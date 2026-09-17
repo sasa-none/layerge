@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-test('modal.replace(Component, {fakePath}) overlay-close restores returnTo (home)', async ({page}) => {
+test('modal.replace(Component, {url}) overlay-close restores returnTo (home)', async ({page}) => {
     await page.goto('/');
 
     await expect(page.getByTestId('home-url')).toHaveText('/');

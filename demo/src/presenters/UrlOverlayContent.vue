@@ -1,6 +1,6 @@
 <template>
-    <div data-testid="fakepath-content">
-        <h3>FakePath Content</h3>
+    <div data-testid="url-overlay-content">
+        <h3>URL Overlay Content</h3>
         <p>
             This component is opened via
             <code>push(Component, {url})</code>

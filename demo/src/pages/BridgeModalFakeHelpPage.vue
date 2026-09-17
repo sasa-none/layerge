@@ -20,7 +20,7 @@ import {onMounted} from 'vue';
 import {useRouter} from 'vue-router';
 import {lastAction, lastResult, trackNavigation} from '../navLog';
 
-import FakePathContent from '../presenters/FakePathContent.vue';
+import UrlOverlayContent from '../presenters/UrlOverlayContent.vue';
 
 const router = useRouter();
 
@@ -29,7 +29,7 @@ onMounted(() => {
     lastResult.value = '';
 
     trackNavigation("modal.replace(Component, {url:'/fake/help'})", '/fake/help');
-    router.modal.replace(FakePathContent, {url: '/fake/help'});
+    router.modal.replace(UrlOverlayContent, {url: '/fake/help'});
 });
 </script>
 

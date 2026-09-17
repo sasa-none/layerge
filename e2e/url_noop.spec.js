@@ -10,5 +10,5 @@ test('modal.push(Component, {url: current fullPath}) is no-op (router-link behav
 
     // no-op: URL unchanged, overlay not opened
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByTestId('fakepath-content')).toHaveCount(0);
+    await expect(page.getByTestId('url-overlay-content')).toHaveCount(0);
 });

@@ -1,11 +1,11 @@
 import {expect, test} from '@playwright/test';
 
-test('slow fakePath loader can be cancelled by browser back (should not resurrect later)', async ({page}) => {
+test('slow url loader can be cancelled by browser back (should not resurrect later)', async ({page}) => {
     await page.goto('/');
 
     await expect(page.getByTestId('home-url')).toHaveText('/');
 
-    await page.getByTestId('modal-fakepath-loader-slow').click();
+    await page.getByTestId('modal-url-loader-slow').click();
 
     await expect(page).toHaveURL(/\/fake\/help-slow$/);
 
@@ -21,5 +21,5 @@ test('slow fakePath loader can be cancelled by browser back (should not resurrec
     await expect(page).toHaveURL(/\/$/);
 
     // Ensure the async component did not show up after cancellation.
-    await expect(page.getByTestId('fakepath-content')).toHaveCount(0);
+    await expect(page.getByTestId('url-overlay-content')).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-09-17（A-2 / A-3 / A-5 / A-6 の完了を反映）
+最終更新: 2026-09-17（A-7 の完了と A-8 の追加を反映）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -13,7 +13,7 @@ npm レジストリ上で `layerge` という名前は**未使用であること
 
 | 担当 | 項目 |
 |---|---|
-| **Claude Code**（実装） | A-2 / A-3 / A-5 / A-6 / A-7 / **B-1（TypeScript 移行）** / B-2 |
+| **Claude Code**（実装） | A-2 / A-3 / A-5 / A-6 / A-7 / A-8 / **B-1（TypeScript 移行）** / B-2 |
 | **Cowork**（仕様の明文化・ドキュメント） | 仕様書の作成と更新、C-1、C-2、JSDoc 規約の再定義 |
 | **ユーザー本人** | A-4（package.json メタデータ。リポジトリ構成を検討中のため、決定後に本人が記載） |
 
@@ -28,7 +28,8 @@ B-1 は [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md) を
    特に A-6 はファイル削除、B-1 は全ファイルの書き換えを伴います。退避先を作ってから着手してください。
 2. ~~**A-6**（デッドコード削除）~~ ✅ **完了**（コミット `c4c2bb3`）
 3. ~~**A-5**（型定義に `usePresenterLeaveGuard` 追加）~~ ✅ **完了**（コミット `08a4065`）
-4. **A-7**（デモの `url` 移行）← **次はここ**
+4. ~~**A-7**（デモの `url` 移行）~~ ✅ **完了**（コミット `f7de883`）
+   4-b. **A-8**（`fakepath` 命名の一掃）← **次はここ。**挙動を変えないこと
 5. **B-2**（CI）— ここまでの成果を自動検証できる状態にする
 6. **B-1**（TypeScript 移行）— 仕様書に従い段階 0 から順に
 
@@ -152,13 +153,43 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 ---
 
-### A-7. デモが非推奨 API を使い続けている 🟡
+### A-7. デモの `url` 移行 ✅ 対応済み（2026-09-17）
 
-`demo/src/pages/HomePage.vue` ほかが `fakePath` を使用しており、E2E のテスト ID も `modal-replace-fakepath` のままです。
+コミット `f7de883`。`demo/src` 配下の `fakePath` 呼び出し 12 箇所を `url` へ置き換え、画面表示のコード例・説明文も揃えました。**`demo/src` に `fakePath` の文字列は 1 件も残っていません。**
 
-README はデモの実装に合わせて記述する必要があるため、現在は「デモは非推奨の `fakePath` を使っている」旨の注記を入れて整合を取っています。**デモは利用者が最初に読むサンプルコードであるため、`url` へ移行すべきです。**
+テスト ID `modal-replace-fakepath` を `modal-replace-url` へ改名し、参照する E2E スペック 2 本を追従。README のデモ節とケーススタディ 3 も実態に合わせて更新済みです。
 
-移行時はテスト ID の改名（`modal-replace-fakepath` → `modal-replace-url`）も伴い、E2E スペック 2 本（`modal_replace_fakepath.spec.js` / `modal_replace_close_restore.spec.js`）の更新が必要です。
+#### 互換性が保たれている根拠（検証済み）
+
+文字列を渡した場合、`url` と `fakePath` は `createLayergeRouter.js` 内で**同じ `resolveUrlLocation()` に入り**（2050-2054 行）、`allowUnmatched` の判定も両者を同列に扱います（2092 行）。デモが渡すのはすべて文字列パスのため、置き換えによる挙動差はありません。
+
+#### E2E から `fakePath` の直接検証が消えたことについて
+
+デモが `url` を使うようになったため、**E2E は `fakePath` オプションを直接渡さなくなりました。**これを許容する判断の理由を記録します。
+
+- `url` と `fakePath` は**履歴・ルーターに触れる前に** `resolveUrlLocation()` へ収束します。したがって下流の挙動は構造上同一で、E2E で両方を流しても同じコードを二度通るだけです
+- `fakePath` に固有なのは「`options.fakePath` を読む」という入口の配線のみで、これは**単体テストが直接カバーしています**（`tests/createLayergeRouter.test.js:222`、`tests/v3x_async_api.test.js:18,43,44` の計 5 箇所）
+- よって単体テストで十分と判断しました。**`fakePath` の互換受付を削除する際は、この 5 箇所が検証の所在です**
+
+---
+
+### A-8. `fakepath` 命名の一掃 🟡 **実施する**
+
+A-7 で挙動は `url` へ移りましたが、**名前だけが `fakepath` のまま残っています。**
+
+| 種別 | 数 | 例 |
+|---|---:|---|
+| E2E スペックのファイル名 | 5 | `fakepath.spec.js`、`modal_replace_fakepath.spec.js` ほか |
+| テスト ID | 5 | `modal-fakepath`、`modal-fakepath-loader-slow`、`fakepath-content` ほか |
+| `fakePath` / `fakepath` を含むスペック | 15 本 | テスト名・コメント |
+| `demo/src` 内の識別子 | 22 箇所 | `openFakePathLoader` ほか、`demo/src/presenters/FakePathContent.vue` |
+
+**実施する判断の理由:** これらの名前は単に古いのではなく、**現在は事実に反しています。**`fakepath.spec.js` が検証しているのは `url` の経路です。公開後に外部の貢献者がこのスペック一覧を見れば、非推奨オプションを検証していると誤解します。改名は機械的で、`git mv` で履歴も保てます。**外部からの参照がまだ存在しない公開前が、最も安価な実施時期です。**
+
+対象は上表のとおりで、**挙動の変更を一切伴わないこと**を条件とします。あわせて README の「Related E2E specs」一覧（`e2e/modal_replace_fakepath.spec.js` の記載）と、デモ節の暫定注記も更新が必要です。
+
+> `demo/src/presenters/FakePathContent.vue` は「URL だけ差し替えて描画する」デモ内容そのものを指す名前です。
+> 実体に即した名前（`UrlOverlayContent` など）へ改名して構いませんが、**命名は実装側の裁量で決めてください。**
 
 ---
 
@@ -194,6 +225,19 @@ README はデモの実装に合わせて記述する必要があるため、現�
 - `npm pack` の内容検証と、`consumer-vue-router-4` / `consumer-vue-router-5` による消費側インストール・ビルド確認
 
 消費側検証ディレクトリはすでに存在するため、**CI 化の材料は揃っています。**
+
+#### 着手前に決めること: `demo/` を lint 対象に含めるか
+
+A-7 の作業中に判明しました。**`pnpm lint:check` は `layerge/**` しか見ておらず、`demo/**` は lint 対象外です。**
+現在 `demo/` には eslint の indent エラー 17 件（`V3AdvancedDemoPage.vue`）と、5 ファイルの prettier 非準拠が存在します。
+いずれも A-7 以前から存在するもので、A-7 が増やしたものではないことは確認済みです。
+
+CI で `demo/` を lint 対象に含める場合、**初回から赤になります。**次のいずれかを先に決めてください。
+
+1. `pnpm lint` を一度通して既存エラーを解消してから CI に含める（推奨。デモは利用者が読むコードです）
+2. CI の lint 対象を `layerge/**` に限定し、`demo/` は対象外のままにする
+
+`pnpm lint:check` が `demo/` を見ていないという事実自体が、**既存エラーが長期間検出されずに残っていた原因**です。
 [AGENTS.md](../AGENTS.md) の「変更時に必ず行うこと」を機械的に強制する場でもあります。
 
 ---
@@ -235,3 +279,4 @@ README には `vue@3` / `vue-router@4` / `vue-router@5` で検証済みと記載
 - [x] A-2 / A-3 git 初期化と `.gitignore` / `.gitattributes`（`9bfdf24`）
 - [x] A-6 デッドコード削除と関連ドキュメントの更新（`c4c2bb3`）
 - [x] A-5 型定義への `usePresenterLeaveGuard` 追加（`08a4065`）。公開エクスポート 9 個すべてに型宣言が揃った
+- [x] A-7 デモの `fakePath` → `url` 移行（`f7de883`）

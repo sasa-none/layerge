@@ -1,11 +1,11 @@
 import {expect, test} from '@playwright/test';
 
-test('modal.push(failingLoader, {fakePath}) shows error UI and back returns', async ({page}) => {
+test('modal.push(failingLoader, {url}) shows error UI and back returns', async ({page}) => {
     await page.goto('/');
 
     await expect(page.getByTestId('home-url')).toHaveText('/');
 
-    await page.getByTestId('modal-fakepath-loader-fail').click();
+    await page.getByTestId('modal-url-loader-fail').click();
 
     await expect(page).toHaveURL(/\/fake\/help-fail$/);
 
