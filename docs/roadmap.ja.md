@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-09-17（A-10 完了。優先度 A は A-4 を除きすべて完了）
+最終更新: 2026-09-18（B-2 完了、B-3〜B-6 を追加。優先度 C の見出し欠落も修復）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -13,7 +13,7 @@ npm レジストリ上で `layerge` という名前は**未使用であること
 
 | 担当 | 項目 |
 |---|---|
-| **Claude Code**（実装） | A-2 / A-3 / A-5 / A-6 / A-7 / A-8 / A-9 / A-10 / **B-1（TypeScript 移行）** / B-2 |
+| **Claude Code**（実装） | A-2 / A-3 / A-5〜A-10 / B-2〜B-6 / **B-1（TypeScript 移行）** |
 | **Cowork**（仕様の明文化・ドキュメント） | 仕様書の作成と更新、C-1、C-2、JSDoc 規約の再定義 |
 | **ユーザー本人** | A-4（package.json メタデータ。リポジトリ構成を検討中のため、決定後に本人が記載） |
 
@@ -32,8 +32,9 @@ B-1 は [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md) を
    4-b. ~~**A-8**（`fakepath` 命名の一掃）~~ ✅ **完了**（コミット `df2359d`）
 5. ~~**A-9**（lint の検査範囲を揃える）~~ ✅ **完了**（コミット `765c0d3`）
    5-b. ~~**A-10**（`no-console` の環境依存解消）~~ ✅ **完了**（コミット `f999228`）
-6. **B-2**（CI）← **次はここ。**A-9 / A-10 により lint は決定的になっており、初回から赤になる要因は解消済み
-7. **B-1**（TypeScript 移行）— 仕様書に従い段階 0 から順に
+6. ~~**B-2**（CI）~~ ✅ **完了**（コミット `9fd3baf`）
+   6-b. **B-3 / B-4 / B-5**（CI の追補）← B-3 は次のバージョンで CI が壊れるため優先。**B-4 は B-1 の前に入れること**
+7. **B-1**（TypeScript 移行）— 仕様書に従い段階 0 から順に。**B-4 を先に済ませることを推奨**
 
 > 各項目の完了条件は共通して **`pnpm test` と `pnpm lint:check` が通り、E2E 43 本が緑であること**です。
 > 1 項目ごとにコミットを分けてください。
@@ -298,25 +299,92 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 ---
 
-### B-2. CI の設置 🟡
+### B-2. CI の設置 ✅ 対応済み（2026-09-17）
 
-現在 CI がありません。最低限、次をプルリクエストで自動実行すべきです。
+コミット `9fd3baf`。`.github/workflows/ci.yml`（3 ジョブ）と `scripts/verify-pack.mjs` を追加。`pull_request` と `main` への push で実行されます。
 
-- `pnpm lint:check`
-- `pnpm test`（Vitest）
-- `pnpm test:e2e`（Playwright）
-- `npm pack` の内容検証と、`consumer-vue-router-4` / `consumer-vue-router-5` による消費側インストール・ビルド確認
+| ジョブ | 内容 |
+|---|---|
+| `lint-and-test` | `pnpm lint:check` / `pnpm test` / `pnpm build` |
+| `e2e` | Playwright。失敗時に `test-results/` を artifact 保存 |
+| `pack-and-consumers` | `pnpm build` → 公開物検証 → `npm pack` → consumer-4 / -5 を matrix で install + build |
 
-消費側検証ディレクトリはすでに存在するため、**CI 化の材料は揃っています。**
+Node は `engines` の下限である 20。`concurrency` で同一 ref の古い実行を打ち切ります。
 
-#### `demo/` の lint は A-9 で解決済みの前提
+**検証方法が堅実です。** `node_modules` も `dist` も tarball も無いツリーを `git archive` で作り、3 ジョブすべてを通しで実行して確認されています。CI 設定は「書いたが動くか分からない」が最も起きやすい領域なので、この確認は価値があります。
 
-`demo/` を lint 対象に含めるかという論点は **A-9 で決着済み**です（含める）。
-**A-9 を終えてから本項目に着手してください。**未了のまま CI を組むと初回から赤になります。
+`scripts/verify-pack.mjs` は当方でも実行し、8 ファイルで OK になることを確認しました。`EXPECTED_FILES` は `package.json` の `files` と整合しています。
 
-CI が実行すべき内容は本節冒頭のとおりで、`pnpm lint:check` は A-9 によって `demo/` も検査する状態になっています。
+#### 実装中に判明した pnpm の挙動（記録）
+
+- **`cd consumer-… && pnpm install` は consumer をインストールしません。**pnpm が親を辿ってワークスペース（root + demo）を対象にするため、`--ignore-workspace` が必須です
+- **consumer で `--frozen-lockfile` は必ず失敗します。**lockfile に tarball の integrity が焼き込まれており、ソースが変われば `npm pack` の結果も変わるためです（`ERR_PNPM_TARBALL_INTEGRITY`）。`--no-frozen-lockfile` を使用。lockfile は `vue` / `vue-router` / `vite` の固定には引き続き効いています
+
+#### 前提
+
+CI プラットフォームは **GitHub Actions** を前提としています。公開先は A-4 で検討中ですが、別ホストにする場合もジョブの中身（コマンド列）はそのまま移せます。README の CI バッジは A-4 の決定後に追加するのが自然です。
 
 ---
+
+### B-3. consumer の tarball 参照がバージョン固定になっている 🔴 **次のバージョンで CI が壊れます**
+
+`consumer-vue-router-4/package.json` と `consumer-vue-router-5/package.json` が、依存をファイル名で直接指定しています。
+
+```json
+"layerge": "file:../layerge-1.0.0.tgz"
+```
+
+**バージョンを `1.0.1` に上げた瞬間、`npm pack` の生成物は `layerge-1.0.1.tgz` になり、consumer ジョブが解決不能で落ちます。**時限式の破綻であり、しかも壊れるのはリリース作業の最中です。
+
+対処の選択肢は次のとおりです。
+
+1. CI で `npm pack --json` が返すファイル名を読み、consumer の依存指定を実行時に書き換える
+2. `npm pack` の出力を固定名（`layerge.tgz` など）へリネームしてから参照する
+3. リリース手順書に「consumer の参照を更新する」と明記して人手で回す
+
+**2 が最も単純で壊れにくい**と考えますが、実装側の裁量で決めてください。いずれにせよ**バージョンを上げる前に解消が必要です。**
+
+---
+
+### B-4. 公開ビルド（`dist`）の実行時検証が存在しない 🟡
+
+CI を組んだことで、テストが何を検証しているかが明確になりました。**現状、`dist/` の中身を実際に動かすテストは 1 つもありません。**
+
+| 検証 | 対象 |
+|---|---|
+| 単体テスト 28 件 | `layerge/` の**ソース** |
+| E2E 58 テスト | `layerge/` の**ソース**（`demo/vite.config.js` が `layerge` を `../layerge/index.js` へ alias） |
+| consumer ジョブ | tarball を**インストールしてビルドが通ること**のみ。実行はしない |
+
+つまり `vite build` の設定ミスで `dist/index.mjs` の中身が壊れても、**CI は緑のまま通ります。**consumer ジョブはモジュール解決は見ますが、実行時の挙動は見ていません。
+
+demo が alias でソースを見るのは開発上の合理的な判断（クリーンクローンで `dist` が無くても動く）なので、alias を変えるべきではありません。
+
+**推奨する対処:** `dist/index.mjs` と `dist/index.cjs` を実際に import し、公開エクスポート 9 個が取得できることを確認する小さなスモークテストを追加し、`pack-and-consumers` ジョブで実行する。ビルド成果物が壊れていないことの最低限の保証になります。
+
+> **B-1 との関係:** TypeScript 移行では型定義がビルド生成に切り替わり、ビルド設定にも手が入ります。**このスモークテストは B-1 の前に入れておくほうが安全です。**移行中にビルド出力が壊れても気づける状態になります。
+
+---
+
+### B-5. 型定義 2 ファイルの同一性が機械的に守られていない 🟡 **B-1 完了まで**
+
+`index.d.ts` と `index.d.cts` は**バイト単位で同一であることが前提**の運用ですが、それを検査する仕組みがありません。`verify-pack.mjs` は両者の存在とサイズ非ゼロのみを見ています。
+
+A-5 では手作業で同一性が保たれましたが、片方だけ編集しても CI は気づきません。その場合、**ESM 利用者と CJS 利用者で型が食い違う**という発見しにくい不具合になります。
+
+`cmp -s index.d.ts index.d.cts` を CI に 1 行足すだけで防げます。
+
+> **B-1 の段階 7 で手書きの型定義は廃止されるため、本項目はそれまでの暫定措置です。**ただし B-1 は長い作業であり、その間こそ守られているべき不変条件です。
+
+---
+
+### B-6. consumer lockfile の扱い 🟢
+
+consumer の lockfile は tarball の integrity を含むため、ソースが変わるたびに古くなります（B-2 で `--no-frozen-lockfile` を使う理由）。git 管理から外す選択肢もありますが、その場合 `vue` / `vue-router` / `vite` の固定が失われます。**現状維持で実害はありません。**判断が必要になったときのための記録です。
+
+---
+
+## 優先度 C — 継続的に整えるもの
 
 ### C-1. バージョン表記の混在を解消する 🟡
 
@@ -357,3 +425,4 @@ README には `vue@3` / `vue-router@4` / `vue-router@5` で検証済みと記載
 - [x] A-8 `fakepath` 命名の一掃（`df2359d`）。`layerge/` と `tests/` は無変更
 - [x] A-9 lint の検査範囲の統一と整形権威の一本化（`765c0d3`）。コーディング規約も実態に合わせて訂正
 - [x] A-10 `no-console` の環境依存を解消（`f999228`）。両環境で lint 結果が一致することを確認済み
+- [x] B-2 CI の設置（`9fd3baf`）。クリーンツリーで 3 ジョブの通し実行を確認済み

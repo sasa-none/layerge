@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       layerge:
-        specifier: file:../layerge-1.0.0.tgz
-        version: file:../layerge-1.0.0.tgz(vue-router@4.6.4(vue@3.5.35))(vue@3.5.35)
+        specifier: file:../layerge.tgz
+        version: file:../layerge.tgz(vue-router@4.6.4(vue@3.5.35))(vue@3.5.35)
       vue:
         specifier: ^3.5.35
         version: 3.5.35
@@ -233,8 +233,8 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
-  layerge@file:../layerge-1.0.0.tgz:
-    resolution: {integrity: sha512-ohhsQ9G984BOH94HlhQQT2/0gEuQjzDgT5JULFr5gpxIlqMJP4reQ5ANb7eTB1GHSDZz+sA21sc3A1y0r8O3VQ==, tarball: file:../layerge-1.0.0.tgz}
+  layerge@file:../layerge.tgz:
+    resolution: {integrity: sha512-+mwxTG4frlom634JPQWiL2gLtZyu69znuMQRMZzQ7VorQT6UHkrb/iMaKrCxkp9Bt7eg0ArnikN/jIApTY/4MQ==, tarball: file:../layerge.tgz}
     version: 1.0.0
     engines: {node: '>=20'}
     peerDependencies:
@@ -581,7 +581,7 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
-  layerge@file:../layerge-1.0.0.tgz(vue-router@4.6.4(vue@3.5.35))(vue@3.5.35):
+  layerge@file:../layerge.tgz(vue-router@4.6.4(vue@3.5.35))(vue@3.5.35):
     dependencies:
       vue: 3.5.35
       vue-router: 4.6.4(vue@3.5.35)

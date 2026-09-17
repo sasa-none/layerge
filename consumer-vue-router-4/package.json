@@ -6,7 +6,7 @@
         "build": "vite build"
     },
     "dependencies": {
-        "layerge": "file:../layerge-1.0.0.tgz",
+        "layerge": "file:../layerge.tgz",
         "vue": "^3.5.35",
         "vue-router": "^4.6.3"
     },

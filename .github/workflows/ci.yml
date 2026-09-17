@@ -97,8 +97,10 @@ jobs:
       - name: 公開物の構成を検証する
         run: node scripts/verify-pack.mjs
 
-      - name: tarball を生成する
-        run: npm pack
+      # consumer は file:../layerge.tgz を参照する。npm pack の生成物は
+      # バージョン入りの名前になるため、固定名へ改名してから渡す（ROADMAP B-3）
+      - name: tarball を固定名で生成する
+        run: node scripts/pack-for-consumers.mjs
 
       # consumer は workspace の外側にあるため --ignore-workspace が必要。
       # また tarball の integrity は毎回変わるので lockfile は固定できない
