@@ -1,4 +1,4 @@
-import type {Component, ComputedRef} from 'vue';
+import type {Component, ComputedRef, Ref} from 'vue';
 import type {RouteLocationNormalizedLoaded, RouteLocationRaw, Router} from 'vue-router';
 
 export type PresenterKind = 'push' | 'replace' | 'open';
@@ -225,6 +225,22 @@ export declare function usePresenter(): {
 export declare function usePresenterBindings<T extends Record<string, any>>(
     mapper: (ctx: LayergeEntryContext) => T
 ): ComputedRef<T>;
+
+/**
+ * Presenter の離脱ガードを登録します。
+ * dirty / pending の保持と confirm UI は Presenter（アプリ）側の責務です。
+ */
+export declare function usePresenterLeaveGuard(opts?: {
+    dirty?: Ref<boolean> | boolean;
+    pending?: Ref<boolean> | boolean;
+    commit?: () => Promise<void>;
+    message?: string;
+    confirm?: (ctx: {entryId: string; reason: string}) => boolean | Promise<boolean>;
+}): {
+    entryId: ComputedRef<string | null>;
+    dirty: Ref<boolean> | boolean;
+    pending: Ref<boolean> | boolean;
+};
 
 export type LayergeLinkAttrs = Record<string, unknown>;
 
