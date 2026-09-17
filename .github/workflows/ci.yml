@@ -97,6 +97,11 @@ jobs:
       - name: 公開物の構成を検証する
         run: node scripts/verify-pack.mjs
 
+      # 単体テストも E2E も layerge/ のソースを対象にしているため、
+      # dist/ を実際に読み込む検証はここだけ（ROADMAP B-4）
+      - name: ビルド成果物を実際に読み込む
+        run: node scripts/smoke-dist.mjs
+
       # consumer は file:../layerge.tgz を参照する。npm pack の生成物は
       # バージョン入りの名前になるため、固定名へ改名してから渡す（ROADMAP B-3）
       - name: tarball を固定名で生成する
