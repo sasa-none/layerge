@@ -34,6 +34,11 @@ jobs:
       # lint:check は layerge/ と demo/src/ の双方を検査する（ROADMAP A-9）
       - run: pnpm lint:check
 
+      # TypeScript 移行中は型検査が独立した検査対象になる。
+      # lint:check は typescript-eslint の構文ベースのルールしか見ないため、
+      # これが無いと tsc の通らないコードが緑で通る（移行仕様書 第 4 章）
+      - run: pnpm typecheck
+
       - run: pnpm test
 
       # index.d.ts と index.d.cts はバイト単位で同一である前提の運用（ROADMAP B-5）。

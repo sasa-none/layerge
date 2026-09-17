@@ -82,6 +82,7 @@
         "lint:check:js": "eslint \"layerge/**/*.{js,cjs,mjs,ts,vue}\" \"demo/src/**/*.{js,cjs,mjs,vue}\"",
         "lint:js": "eslint --fix \"layerge/**/*.{js,cjs,mjs,ts,vue}\" \"demo/src/**/*.{js,cjs,mjs,vue}\"",
         "lint:css": "stylelint --fix -f verbose \"layerge/**/*.{vue,css,scss,sass}\" \"demo/src/**/*.{vue,css,scss,sass}\"",
+        "typecheck": "vue-tsc --noEmit",
         "test": "vitest run",
         "test:e2e": "playwright test",
         "e2e:install": "playwright install chromium",
