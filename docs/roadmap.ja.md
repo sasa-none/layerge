@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-09-17（A-8 完了、A-9 を追加）
+最終更新: 2026-09-17（A-9 完了、A-10 を追加）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -13,7 +13,7 @@ npm レジストリ上で `layerge` という名前は**未使用であること
 
 | 担当 | 項目 |
 |---|---|
-| **Claude Code**（実装） | A-2 / A-3 / A-5 / A-6 / A-7 / A-8 / A-9 / **B-1（TypeScript 移行）** / B-2 |
+| **Claude Code**（実装） | A-2 / A-3 / A-5 / A-6 / A-7 / A-8 / A-9 / A-10 / **B-1（TypeScript 移行）** / B-2 |
 | **Cowork**（仕様の明文化・ドキュメント） | 仕様書の作成と更新、C-1、C-2、JSDoc 規約の再定義 |
 | **ユーザー本人** | A-4（package.json メタデータ。リポジトリ構成を検討中のため、決定後に本人が記載） |
 
@@ -30,7 +30,8 @@ B-1 は [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md) を
 3. ~~**A-5**（型定義に `usePresenterLeaveGuard` 追加）~~ ✅ **完了**（コミット `08a4065`）
 4. ~~**A-7**（デモの `url` 移行）~~ ✅ **完了**（コミット `f7de883`）
    4-b. ~~**A-8**（`fakepath` 命名の一掃）~~ ✅ **完了**（コミット `df2359d`）
-5. **A-9**（lint の検査範囲を揃える）← **次はここ。**B-2 の前提
+5. ~~**A-9**（lint の検査範囲を揃える）~~ ✅ **完了**（コミット `765c0d3`）
+   5-b. **A-10**（`no-console` の環境依存解消）← **B-2 の前に決着させること**
 6. **B-2**（CI）— A-9 の完了後に着手
 7. **B-1**（TypeScript 移行）— 仕様書に従い段階 0 から順に
 
@@ -198,36 +199,66 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 ---
 
-### A-9. lint の検査範囲を自動修正の範囲に揃える 🟡 **B-2 の前提**
+### A-9. lint の検査範囲を揃える ✅ 対応済み（2026-09-17）
 
-**決定: `demo/` の既存エラーを解消したうえで、CI の lint 対象に含める。**（2026-09-17 決定）
+コミット `765c0d3`。`pnpm lint:check` は demo を含めて **exit 0** になりました。
 
-#### 根本原因
+#### 是正された非対称（2 件）
 
-`package.json` のスクリプトを確認したところ、**自動修正と検査で対象範囲が食い違っていました。**
+**1. 検査範囲**（本項目の当初の目的）
 
-| スクリプト | 対象 |
-|---|---|
-| `lint:js`（自動修正） | `layerge/**` **と `demo/src/**`** |
-| `lint:check:js`（検査） | `layerge/**` **のみ** |
-| `lint:css`（自動修正） | `layerge/**` **と `demo/src/**`** |
-| `lint:check:css`（検査） | `layerge/**` **のみ** |
-| `format` | `layerge/**` と `demo/src/**` |
+`lint:check:js` / `lint:check:css` の対象に `demo/src/**` を追加し、自動修正側（`lint:js` / `lint:css` / `format`）と範囲を一致させました。
 
-つまり**自動修正は demo を見るのに、検査は見ない**という非対称な状態でした。`pnpm lint` を明示的に実行した人だけが demo を整形し、`pnpm lint:check` は何も言わない。これが eslint エラー 17 件（`V3AdvancedDemoPage.vue`）と prettier 非準拠 5 ファイルが長期間検出されずに蓄積した原因です。
+**2. 整形の二重管理**（作業中に判明した、より根深い問題）
 
-#### 対応方針
+`eslint.config.js` が `prettier` 設定（`indent` を無効化する）を読み込んだ**後**に `indent: ['error', 4]` を再有効化していたため、**`eslint --fix` が出力した整形を同じ ESLint が error として弾く**状態でした。三項演算子の分岐に関数本体やオブジェクトリテラルが来ると必ず衝突します。
 
-単にエラーを消すだけでは再発します。**構造の是正まで行ってください。**
+コード側を書き換えるのではなく `indent` を外し、代わりに `prettier/prettier` を warn から **error** へ引き上げて検査の実効性を保つ、という対応が採られました。**整形の権威を Prettier 単独にする判断であり、妥当です。**
 
-1. `pnpm lint` と `pnpm format` を実行し、自動修正で解消できるものを解消する
-2. 残った手動修正が必要なエラーを個別に対応する（`V3AdvancedDemoPage.vue` の indent が主）
-3. **`lint:check:js` と `lint:check:css` の対象に `demo/src/**` を追加し、自動修正側と範囲を揃える** ← これが本質的な修正です
-4. `pnpm lint:check` が exit 0 になることを確認する
+#### ライブラリ本体の変更について（検証済み）
 
-デモは README が利用者に読ませることを前提にしているコードであり、規約違反を抱えたまま公開するのは不整合である、というのが本決定の理由です。
+本コミットは `layerge/` 配下 5 ファイルにも及んでいます。空白差分を無視した diff を確認したところ、**すべて Prettier による行の折り返しと、`eslint-disable` コメントの削除、JSDoc の補完でした。挙動を変える変更はありません。**
 
-**本項目は B-2 の前提です。**これを終えてから CI を設置してください。逆順だと CI が初回から赤になります。
+唯一意味的に触れているのは `handle._id || handle.entryId ? (...) : (...)` の冗長な括弧の除去ですが、`||` は `?:` より結合が強いため等価です。
+
+#### ドキュメント側の追従（Cowork 対応済み）
+
+`prettier/prettier` を error に引き上げたことで、[コーディング規約](./guidelines/coding.ja.md) の記述と実態に矛盾が生じたため訂正しました。
+
+| 項目 | 旧記述 | 訂正後 |
+|---|---|---|
+| 行長 | 「行長制限なし（可読性優先）」 | **110 文字**（`printWidth: 110`）。error として強制されるようになったため |
+| 整形の権威 | 明記なし | **Prettier が唯一の定義元**であることを明記 |
+| インデント | 「4 スペース」 | 4 スペース（`tabWidth: 4` が担保。テンプレートは `vue/html-indent`） |
+
+---
+
+### A-10. `no-console` の環境依存を解消する 🟡 **推奨: `allow` 付きの固定値へ**
+
+`eslint.config.js` の以下 2 行が `NODE_ENV` に依存しており、**lint 結果が環境で変わります。**
+
+```js
+'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+```
+
+この非決定性により、`NODE_ENV` 未設定で `pnpm lint` を実行すると `// eslint-disable-next-line no-console` が「未使用ディレクティブ」と判定されて**自動削除されます**（A-9 で実際に 3 件削除されました）。CI が `NODE_ENV=production` を設定すると、今度は警告が増えます。
+
+#### 推奨する対応
+
+```js
+'no-console': ['warn', {allow: ['warn', 'info', 'debug', 'error']}],
+'no-debugger': 'warn',
+```
+
+理由は次のとおりです。
+
+- **ライブラリは意図的に console へ出力します。**`warnDev()`、DecisionTrace のダンプ、`debug: true` 時の `afterEach` ログは設計された機能であり、`<LayergeLink>` の誤用警告も同様です。使用箇所は 16 で、`warnDev` に集中しておらず 3 ファイルに散在しています
+- 現在使われているのは `warn` / `info` / `debug` / `error` の 4 種のみで、**`console.log` は 1 箇所もありません。**したがって上記 `allow` 指定での指摘は **0 件**で、既存コードへの影響はありません
+- それでいて、将来デバッグ用に紛れ込んだ `console.log` は検出できます
+- 何より**環境非依存になり、lint 結果が決定的になります。**A-9 でディレクティブが消えたような事故が起きなくなります
+
+単に `'off'` に固定するより、`console.log` を捕捉できる分こちらを推します。**判断はユーザーに委ねます。**
 
 ---
 
@@ -310,3 +341,4 @@ README には `vue@3` / `vue-router@4` / `vue-router@5` で検証済みと記載
 - [x] A-5 型定義への `usePresenterLeaveGuard` 追加（`08a4065`）。公開エクスポート 9 個すべてに型宣言が揃った
 - [x] A-7 デモの `fakePath` → `url` 移行（`f7de883`）
 - [x] A-8 `fakepath` 命名の一掃（`df2359d`）。`layerge/` と `tests/` は無変更
+- [x] A-9 lint の検査範囲の統一と整形権威の一本化（`765c0d3`）。コーディング規約も実態に合わせて訂正

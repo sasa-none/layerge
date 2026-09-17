@@ -8,14 +8,21 @@
 
 
 ## 1. 基本方針
-- ESLint / Stylelint / EditorConfig に準拠  
-- 自動整形ツールによる一貫性確保  
-- チーム全体で統一記法維持  
+- ESLint / Stylelint / EditorConfig / **Prettier** に準拠
+- 自動整形ツールによる一貫性確保
+- チーム全体で統一記法維持
+
+> **整形の権威は Prettier です（2026-09-17 決定 / コミット `765c0d3`）。**
+> 以前は ESLint の `indent` ルールと Prettier が二重に整形を管理しており、
+> `eslint --fix` が出力した整形を同じ ESLint が error として弾く状態が発生していました。
+> 現在は ESLint 側の `indent` を外し、`prettier/prettier` を **error** として検査しています。
+> **インデント幅・行長・引用符などの整形ルールは `prettier.config.js` が唯一の定義元です。**
+> 本書のうち整形に関する記述は、Prettier 設定の説明として読んでください。
 
 ---
 
 ## 2. インデント・改行・空行
-- インデント幅 4 スペース  
+- インデント幅 4 スペース（`prettier.config.js` の `tabWidth: 4` が担保。テンプレートは `vue/html-indent` が別途 4 を強制）
 - 連続空行最大 3 行  
 - ファイル末尾改行必須  
 
@@ -45,8 +52,10 @@
 ---
 
 ## 6. 行長・記法
-- 行長制限なし（可読性優先）  
-- Yoda 記法禁止（`if (x === 1)` 形式採用）  
+- **行長は 110 文字**（`prettier.config.js` の `printWidth: 110`）。超過分は Prettier が自動で折り返します
+    - 本書は以前「行長制限なし」と記載していましたが、`prettier/prettier` を error に引き上げた時点（`765c0d3`）で**実態と矛盾したため訂正しました**
+    - 手で折り返す必要はありません。`pnpm format` に任せてください
+- Yoda 記法禁止（`if (x === 1)` 形式採用）
 
 ---
 

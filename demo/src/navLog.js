@@ -70,6 +70,8 @@ const initNavLog = (router) => {
                 }
 
                 if (!t.logOnly) {
+                    // デモの動作確認用に意図して log を出す（console.log はここだけ）
+                    // eslint-disable-next-line no-console
                     console.log(`[demo] navigation resolved: ${t.action}`, {from: from.fullPath, to: toPath});
                 }
 

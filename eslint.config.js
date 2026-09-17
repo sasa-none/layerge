@@ -54,8 +54,13 @@ export default [
 
             'react/jsx-no-bind': 'off',
 
-            'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-            'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+            // console 出力はライブラリの設計された機能（warnDev / DecisionTrace の
+            // ダンプ / debug:true 時のログ）であるため allow で許可する。
+            // NODE_ENV に依存させると lint 結果が環境で変わり、未使用と判定された
+            // eslint-disable ディレクティブが自動削除される事故が起きるため固定値とする。
+            // 紛れ込んだ console.log だけを捕捉する。
+            'no-console': ['warn', {allow: ['warn', 'info', 'debug', 'error']}],
+            'no-debugger': 'warn',
             'linebreak-style': 0,
 
             'jsdoc/require-description': 'warn',
