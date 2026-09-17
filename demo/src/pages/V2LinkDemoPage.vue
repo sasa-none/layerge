@@ -141,12 +141,7 @@
                     useLayergeLink.push('/page-a?cancel=1')
                 </button>
 
-                <button
-                    type="button"
-                    class="Btn"
-                    data-testid="v2-hooks-clear"
-                    @click="clearLog"
-                >
+                <button type="button" class="Btn" data-testid="v2-hooks-clear" @click="clearLog">
                     clear log
                 </button>
             </div>
@@ -177,7 +172,7 @@ const router = useRouter();
 const InlineOverlay = defineComponent({
     name: 'InlineOverlay',
     render() {
-        return h('div', {"data-testid": 'inline-overlay'}, 'InlineOverlay');
+        return h('div', {'data-testid': 'inline-overlay'}, 'InlineOverlay');
     }
 });
 
@@ -256,8 +251,16 @@ onMounted(() => {
 <style scoped>
 .Root {
     padding: 16px;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji";
+    font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        'Apple Color Emoji',
+        'Segoe UI Emoji';
 }
 
 .Title {
@@ -275,15 +278,15 @@ onMounted(() => {
 }
 
 .Section {
-    margin-top: 16px;
     padding: 12px;
+    margin-top: 16px;
     border: 1px solid #eee;
     border-radius: 12px;
 }
 
 .SectionSub {
-    margin-top: 12px;
     padding-top: 12px;
+    margin-top: 12px;
     border-top: 1px dashed #eee;
 }
 
@@ -315,24 +318,24 @@ onMounted(() => {
     align-items: center;
     justify-content: center;
     padding: 8px 10px;
+    font-size: 12px;
+    color: #111;
+    text-decoration: none;
     cursor: pointer;
     background: white;
     border: 1px solid #ccc;
     border-radius: 10px;
-    text-decoration: none;
-    color: #111;
-    font-size: 12px;
 }
 
 .Log {
-    margin-top: 10px;
+    min-height: 84px;
     padding: 10px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #e5e7eb;
     background: #0b1020;
     border: 1px solid #111827;
     border-radius: 12px;
-    color: #e5e7eb;
-    font-size: 12px;
-    min-height: 84px;
 }
 
 .LogLine {

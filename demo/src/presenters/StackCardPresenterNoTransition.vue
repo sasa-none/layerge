@@ -90,7 +90,7 @@ const rootStyle = computed(() => {
     border: 1px solid #ddd;
     border-radius: 14px;
     box-shadow: 0 12px 30px rgb(0 0 0 / 12%);
-    transform: translateX(-50%) translateY(var(--card-offset-y, 0px));
+    transform: translateX(-50%) translateY(var(--card-offset-y, 0));
 }
 
 .Header {
@@ -157,11 +157,11 @@ const rootStyle = computed(() => {
 
 .card-enter-from .Card,
 .card-leave-to .Card {
-    transform: translateX(-50%) translateY(var(--card-offset-y, 0px)) scale(0.98);
+    transform: translateX(-50%) translateY(var(--card-offset-y, 0)) scale(0.98);
 }
 
 .card-enter-to .Card,
 .card-leave-from .Card {
-    transform: translateX(-50%) translateY(var(--card-offset-y, 0px)) scale(1);
+    transform: translateX(-50%) translateY(var(--card-offset-y, 0)) scale(1);
 }
 </style>

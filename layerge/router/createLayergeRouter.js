@@ -2203,11 +2203,11 @@ const createLayergeRouter = (options) => {
 
             const gateNav = hasControlledHook('beforeNavigate')
                 ? runControlledHookMaybe('beforeNavigate', {
-                    entryId: id,
-                    action: kind,
-                    fromFullPath: current.fullPath,
-                    toFullPath: resolved.fullPath
-                })
+                      entryId: id,
+                      action: kind,
+                      fromFullPath: current.fullPath,
+                      toFullPath: resolved.fullPath
+                  })
                 : {ok: true};
 
             runMaybeAsync(gateNav, (gNav) => {

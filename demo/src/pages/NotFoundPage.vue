@@ -72,8 +72,8 @@ const goHome = () => {
 }
 
 .Box {
-    margin-top: 12px;
     padding: 12px;
+    margin-top: 12px;
     background: #f6f7f9;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
@@ -85,13 +85,13 @@ const goHome = () => {
 }
 
 .List {
-    margin: 0;
     padding-left: 18px;
+    margin: 0;
 }
 
 .Btn {
-    margin-top: 14px;
     padding: 8px 10px;
+    margin-top: 14px;
     cursor: pointer;
     background: white;
     border: 1px solid #ccc;

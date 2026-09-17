@@ -75,7 +75,8 @@ const createDemoRouter = () => {
 
     const shouldRejectNavTargetInternal = (to) => {
         const current = router.currentRoute && router.currentRoute.value ? router.currentRoute.value : null;
-        const currentFail = current && current.query && typeof current.query.__fail === 'string' ? current.query.__fail : '';
+        const currentFail =
+            current && current.query && typeof current.query.__fail === 'string' ? current.query.__fail : '';
         if (currentFail === 'reject_push') {
             return true;
         }
@@ -146,7 +147,7 @@ const createDemoRouter = () => {
     });
 
     // demo only: global flags to toggle v3 behaviors in /v3-advanced
-    // eslint-disable-next-line no-underscore-dangle
+
     window.__layergeDemoFlags = window.__layergeDemoFlags || {
         cancelClose: false,
         cancelOpen: false,
@@ -158,15 +159,12 @@ const createDemoRouter = () => {
         debug: true,
         controlledHooks: {
             beforeClose: () => {
-                // eslint-disable-next-line no-underscore-dangle
                 return window.__layergeDemoFlags?.cancelClose ? false : true;
             },
             beforeOpen: () => {
-                // eslint-disable-next-line no-underscore-dangle
                 return window.__layergeDemoFlags?.cancelOpen ? false : true;
             },
             beforeNavigate: () => {
-                // eslint-disable-next-line no-underscore-dangle
                 return window.__layergeDemoFlags?.cancelNavigate ? false : true;
             }
         },

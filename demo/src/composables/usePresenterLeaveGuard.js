@@ -7,6 +7,10 @@ import {usePresenterBindings} from '../../../layerge';
  *
  * Registers a per-entry guard into the global registry that is consulted by
  * demo/src/router.js controlledHooks.beforeClose.
+ * @param {object} options - ガード設定
+ * @param {import('vue').Ref<boolean>|boolean} options.dirty - 未保存の変更があるか
+ * @param {() => (boolean|Promise<boolean>)} options.confirm - 続行してよいかの確認
+ * @returns {void}
  */
 export function usePresenterLeaveGuard({dirty, confirm}) {
     const entryId = usePresenterBindings((ctx) => ctx.id);
@@ -14,17 +18,14 @@ export function usePresenterLeaveGuard({dirty, confirm}) {
     const register = (id) => {
         if (!id) return () => {};
 
-        // eslint-disable-next-line no-underscore-dangle
         window.__layergeLeaveGuards = window.__layergeLeaveGuards || new Map();
 
-        // eslint-disable-next-line no-underscore-dangle
         window.__layergeLeaveGuards.set(id, async () => {
             if (!dirty?.value) return true;
             return await confirm();
         });
 
         return () => {
-            // eslint-disable-next-line no-underscore-dangle
             window.__layergeLeaveGuards?.delete(id);
         };
     };

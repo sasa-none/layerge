@@ -121,7 +121,12 @@
         <div class="Section">
             <h2 class="SubTitle">Modal (component + url)</h2>
             <div class="Buttons">
-                <button type="button" class="Btn" data-testid="modal-url-query-hash" @click="openUrlQueryHash">
+                <button
+                    type="button"
+                    class="Btn"
+                    data-testid="modal-url-query-hash"
+                    @click="openUrlQueryHash"
+                >
                     modal.push(Component, {url:{query,hash}})
                 </button>
                 <button type="button" class="Btn" data-testid="modal-url-noop" @click="openUrlNoop">
@@ -476,15 +481,19 @@ const openUrlLoaderFail = () => {
 
 const openUrlQueryHash = () => {
     setAction("modal.push(Component, {url:{query:{u:'1'},hash:'#h'}})");
-    trackTo("modal.push(Component, {url:{query:{u:'1'},hash:'#h'}})", {path: '/', query: {u: '1'}, hash: '#h'});
+    trackTo("modal.push(Component, {url:{query:{u:'1'},hash:'#h'}})", {
+        path: '/',
+        query: {u: '1'},
+        hash: '#h'
+    });
     router.modal.push(UrlOverlayContent, {url: {query: {u: '1'}, hash: '#h'}});
 };
 
 const openUrlNoop = () => {
-    setAction("modal.push(Component, {url: current}) // no-op");
+    setAction('modal.push(Component, {url: current}) // no-op');
     // current fullPath を明示して指定（router-link準拠で no-op になる想定）
     const current = router.currentRoute.value.fullPath;
-    trackTo("modal.push(Component, {url: current}) // no-op", current);
+    trackTo('modal.push(Component, {url: current}) // no-op', current);
     router.modal.push(UrlOverlayContent, {url: current});
 };
 

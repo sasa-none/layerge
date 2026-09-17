@@ -46,14 +46,14 @@ onErrorCaptured((err) => {
 <style scoped>
 .ErrorRoot {
     padding: 12px;
+    background: rgb(255 0 0 / 6%);
     border: 1px solid #d66;
-    background: rgba(255, 0, 0, 0.06);
     border-radius: 8px;
 }
 
 .ErrorTitle {
-    font-weight: 600;
     margin-bottom: 6px;
+    font-weight: 600;
 }
 
 .ErrorMessage {

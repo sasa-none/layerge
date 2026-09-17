@@ -197,11 +197,11 @@ const goBack = () => {
 }
 
 .Block {
+    display: grid;
+    gap: 8px;
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 10px;
-    display: grid;
-    gap: 8px;
 }
 
 .SubTitle {
@@ -230,11 +230,11 @@ const goBack = () => {
 }
 
 .List {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 12px;
-    color: #333;
     display: grid;
     gap: 6px;
+    padding-left: 18px;
+    margin: 0;
+    font-size: 12px;
+    color: #333;
 }
 </style>

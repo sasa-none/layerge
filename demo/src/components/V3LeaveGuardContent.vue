@@ -3,15 +3,26 @@
         <h3 class="Title">V3 Leave Guard Content</h3>
 
         <div class="Help">
-            <div>Toggle <b>dirty</b>/<b>pending</b>, then try closing via:</div>
+            <div>
+                Toggle
+                <b>dirty</b>
+                /
+                <b>pending</b>
+                , then try closing via:
+            </div>
             <ul>
                 <li>the page buttons (closeTop / closeAll)</li>
                 <li>the browser back button (when opened with push+url)</li>
                 <li>Esc key (if enabled in your environment)</li>
             </ul>
             <div>
-                When <b>pending</b> is true, Layerge waits <b>commit()</b> before proceeding.
-                When <b>dirty</b> is true, the guard should prompt confirmation.
+                When
+                <b>pending</b>
+                is true, Layerge waits
+                <b>commit()</b>
+                before proceeding. When
+                <b>dirty</b>
+                is true, the guard should prompt confirmation.
             </div>
         </div>
 
@@ -68,9 +79,13 @@ const useConfirm = ref(true);
 const message = ref('You have unsaved changes. Close anyway?');
 const log = ref('');
 
-watch([dirty, pending, commitDelayMs], ([d, p, ms]) => {
-    log.value = `dirty=${d} pending=${p} delay=${ms}ms`;
-}, {immediate: true});
+watch(
+    [dirty, pending, commitDelayMs],
+    ([d, p, ms]) => {
+        log.value = `dirty=${d} pending=${p} delay=${ms}ms`;
+    },
+    {immediate: true}
+);
 
 usePresenterLeaveGuard({
     dirty,
@@ -93,7 +108,6 @@ usePresenterLeaveGuard({
             return true;
         }
 
-        // eslint-disable-next-line no-alert
         return window.confirm(`${message.value}\n(reason=${ctx.reason}, entryId=${ctx.entryId})`);
     }
 });
@@ -114,39 +128,47 @@ const closeAsyncSelf = async () => {
 .Wrap {
     padding: 16px;
 }
+
 .Title {
     margin: 0 0 8px;
 }
+
 .Help {
     margin: 0 0 12px;
     font-size: 14px;
     line-height: 1.4;
 }
+
 .Row {
     display: flex;
     gap: 8px;
     align-items: center;
     margin: 8px 0;
 }
+
 .Label {
     min-width: 120px;
 }
+
 .Input {
     width: 120px;
 }
+
 .Buttons {
     margin-top: 12px;
 }
+
 .Btn {
     padding: 8px 12px;
 }
+
 .Log {
-    margin-top: 12px;
     padding: 8px;
+    margin-top: 12px;
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 12px;
     background: #1112;
     border-radius: 8px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-        'Courier New', monospace;
-    font-size: 12px;
 }
 </style>

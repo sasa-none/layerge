@@ -1,13 +1,7 @@
 <template>
     <slot v-if="custom" :navigate="navigate" :handler="handler" />
 
-    <a
-        v-else
-        :ref="elRef"
-        :href="href"
-        @click="onClick"
-        @keydown="onKeydown"
-    >
+    <a v-else :ref="elRef" :href="href" @click="onClick" @keydown="onKeydown">
         <slot />
     </a>
 </template>
@@ -62,8 +56,9 @@ const mode = computed(() => {
     const hasTo = props.to != null;
     const hasComponent = props.component != null;
     if (hasTo && hasComponent) {
-        // eslint-disable-next-line no-console
-        console.warn('[LayergeLink] `to` and `component` are mutually exclusive. `to` will be used and `component` will be ignored.');
+        console.warn(
+            '[LayergeLink] `to` and `component` are mutually exclusive. `to` will be used and `component` will be ignored.'
+        );
         return 'route';
     }
     if (hasComponent) {
@@ -72,7 +67,7 @@ const mode = computed(() => {
     if (hasTo) {
         return 'route';
     }
-    // eslint-disable-next-line no-console
+
     console.warn('[LayergeLink] Missing `to` or `component`. This link will be a no-op.');
     return 'none';
 });
@@ -148,7 +143,6 @@ const callPresenter = async (kind, event) => {
 
     // url is only for push/replace
     if (kind === 'open' && props.url != null) {
-        // eslint-disable-next-line no-console
         console.warn('[LayergeLink] `url` is ignored when action is "open".');
     }
 
@@ -293,6 +287,8 @@ const handler = {
 
 /**
  * navigate - action 指定メソッドを呼び出します
+ * @param {unknown} [event] - click/keydown event
+ * @returns {void}
  */
 const navigate = (event) => {
     /** @type {'push'|'replace'|'open'} */

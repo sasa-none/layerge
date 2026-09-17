@@ -33,7 +33,13 @@ export default [
             'vuejs-accessibility/form-control-has-label': 0,
             'vuejs-accessibility/label-has-for': 0,
 
-            indent: ['error', 4],
+            // 整形の権威は prettier 単独とする。
+            // 以前は core の indent ルールと二重管理になっており、
+            // eslint --fix（pnpm lint）が出力した整形結果を
+            // 同じ eslint の indent ルールが error として弾く状態だった。
+            // 検査を実効化するため warn ではなく error で運用する。
+            'prettier/prettier': 'error',
+
             semi: [2, 'always'],
             'object-curly-spacing': [2, 'never'],
             'comma-dangle': [2, 'never'],

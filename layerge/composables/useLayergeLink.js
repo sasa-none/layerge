@@ -149,7 +149,12 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
      * @type {import('../types').LayergeLinkHooks|undefined}
      */
     const normalizedHooks =
-        hooks && typeof hooks === 'object' && hooks !== null && 'hooks' in hooks && hooks.hooks && typeof hooks.hooks === 'object'
+        hooks &&
+        typeof hooks === 'object' &&
+        hooks !== null &&
+        'hooks' in hooks &&
+        hooks.hooks &&
+        typeof hooks.hooks === 'object'
             ? hooks.hooks
             : hooks;
 
@@ -242,7 +247,9 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
 
         // Layerge が使われていない場合は no-op
         if (!$layerge) {
-            safeCallHook(normalizedHooks, 'openFailed', [new Error('[Layerge] Layerge store is not provided.')]);
+            safeCallHook(normalizedHooks, 'openFailed', [
+                new Error('[Layerge] Layerge store is not provided.')
+            ]);
             safeCallHook(normalizedHooks, 'settled', [{ok: false, stage: 'open'}]);
             return;
         }
@@ -258,11 +265,9 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
         const api = router[presenterName];
 
         if (!api || typeof api[kind] !== 'function') {
-            safeCallHook(
-                normalizedHooks,
-                'openFailed',
-                [new Error(`[Layerge] Presenter API is not available: ${presenterName}.${kind}`)]
-            );
+            safeCallHook(normalizedHooks, 'openFailed', [
+                new Error(`[Layerge] Presenter API is not available: ${presenterName}.${kind}`)
+            ]);
             safeCallHook(normalizedHooks, 'settled', [{ok: false, stage: 'open'}]);
             return;
         }
@@ -286,7 +291,10 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
          * @returns {void}
          */
         const commitSuccess = () => {
-            const entryId = handle && (handle._id || handle.entryId) ? (handle._id || handle.entryId) : inferEntryIdFromState($layerge);
+            const entryId =
+                handle && (handle._id || handle.entryId)
+                    ? handle._id || handle.entryId
+                    : inferEntryIdFromState($layerge);
             currentEntryId.value = entryId;
 
             if (entryId && invokerEl && typeof $layerge._setInvoker === 'function') {
@@ -316,15 +324,21 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
                         }
 
                         safeCallHook(normalizedHooks, 'closed', [{entryId: entryId}]);
-                        safeCallHook(normalizedHooks, 'settled', [{ok: true, stage: 'close', entryId: entryId}]);
+                        safeCallHook(normalizedHooks, 'settled', [
+                            {ok: true, stage: 'close', entryId: entryId}
+                        ]);
                     })
                     .catch((e) => {
                         if (token !== opToken.value) {
                             return;
                         }
 
-                        safeCallHook(normalizedHooks, 'closeFailed', [e instanceof Error ? e : new Error(String(e))]);
-                        safeCallHook(normalizedHooks, 'settled', [{ok: false, stage: 'close', entryId: entryId, error: e}]);
+                        safeCallHook(normalizedHooks, 'closeFailed', [
+                            e instanceof Error ? e : new Error(String(e))
+                        ]);
+                        safeCallHook(normalizedHooks, 'settled', [
+                            {ok: false, stage: 'close', entryId: entryId, error: e}
+                        ]);
                     });
             }
         };
@@ -332,7 +346,12 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
         // v2: push/replace の場合はガードキャンセル等で NavigationFailure が返る場合がある。
         // - 成功時のみ opened/entered を通知する
         // - 失敗時は openFailed → settled(ng:open) のみ
-        if ((kind === 'push' || kind === 'replace') && handle && handle._navPromise && typeof handle._navPromise.then === 'function') {
+        if (
+            (kind === 'push' || kind === 'replace') &&
+            handle &&
+            handle._navPromise &&
+            typeof handle._navPromise.then === 'function'
+        ) {
             handle._navPromise
                 .then((failure) => {
                     if (token !== opToken.value) {
@@ -344,7 +363,9 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
                         currentEntryId.value = null;
 
                         safeCallHook(normalizedHooks, 'openFailed', [failure]);
-                        safeCallHook(normalizedHooks, 'settled', [{ok: false, stage: 'open', failure: failure}]);
+                        safeCallHook(normalizedHooks, 'settled', [
+                            {ok: false, stage: 'open', failure: failure}
+                        ]);
                         return;
                     }
 
@@ -355,7 +376,9 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
                         return;
                     }
 
-                    safeCallHook(normalizedHooks, 'openFailed', [e instanceof Error ? e : new Error(String(e))]);
+                    safeCallHook(normalizedHooks, 'openFailed', [
+                        e instanceof Error ? e : new Error(String(e))
+                    ]);
                     safeCallHook(normalizedHooks, 'settled', [{ok: false, stage: 'open', error: e}]);
                 });
 

@@ -1,4 +1,4 @@
-import {computed,onBeforeUnmount,unref,watchEffect} from 'vue';
+import {computed, onBeforeUnmount, unref, watchEffect} from 'vue';
 import {usePresenter} from './usePresenter.js';
 
 /**

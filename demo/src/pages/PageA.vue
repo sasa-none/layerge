@@ -35,9 +35,11 @@ const replaceWithUrl = () => {
 .Block {
     padding: 16px;
 }
+
 .Help {
     margin: 0 0 8px;
 }
+
 .Btn {
     padding: 8px 12px;
 }

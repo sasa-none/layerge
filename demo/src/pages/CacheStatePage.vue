@@ -88,11 +88,11 @@ const cacheContext = computed(() => (presenter?.handle ? 'stackcard' : 'page'));
 }
 
 .Block {
+    display: grid;
+    gap: 8px;
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    display: grid;
-    gap: 8px;
 }
 
 .Label {
@@ -107,8 +107,8 @@ const cacheContext = computed(() => (presenter?.handle ? 'stackcard' : 'page'));
 }
 
 .Btn {
-    margin-left: 8px;
     padding: 6px 8px;
+    margin-left: 8px;
     cursor: pointer;
     background: white;
     border: 1px solid #ccc;

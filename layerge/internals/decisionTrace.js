@@ -51,7 +51,18 @@ const MAX_EVENTS_PER_TRACE_DEFAULT = 100;
  * @constant
  * @type {DecisionTraceEventType[]}
  */
-const VALID_EVENT_TYPES = ['start', 'resolveTarget', 'validate', 'runHook', 'applyRouter', 'latestWins', 'commitLeaving', 'settle', 'log', 'error'];
+const VALID_EVENT_TYPES = [
+    'start',
+    'resolveTarget',
+    'validate',
+    'runHook',
+    'applyRouter',
+    'latestWins',
+    'commitLeaving',
+    'settle',
+    'log',
+    'error'
+];
 
 /**
  * createDecisionTraceStore - DecisionTrace 用のリングバッファを作成します
@@ -63,11 +74,17 @@ const createDecisionTraceStore = (options) => {
     const level = options.level;
 
     const maxTraces = typeof options.maxTraces === 'number' ? options.maxTraces : MAX_TRACES_DEFAULT;
-    const maxEventsPerTrace = typeof options.maxEventsPerTrace === 'number' ? options.maxEventsPerTrace : MAX_EVENTS_PER_TRACE_DEFAULT;
+    const maxEventsPerTrace =
+        typeof options.maxEventsPerTrace === 'number'
+            ? options.maxEventsPerTrace
+            : MAX_EVENTS_PER_TRACE_DEFAULT;
 
-    const sanitize = typeof options.sanitize === 'function' ? options.sanitize : (data) => {
-        return data;
-    };
+    const sanitize =
+        typeof options.sanitize === 'function'
+            ? options.sanitize
+            : (data) => {
+                  return data;
+              };
 
     /** @type {Map<string, DecisionTrace>} */
     const active = new Map();

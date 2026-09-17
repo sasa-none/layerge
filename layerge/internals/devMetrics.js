@@ -17,7 +17,9 @@ import {__layergeGetBeforeUnloadEnabled} from '../composables/usePresenterLeaveG
  */
 const __layergeGetDevMetrics = (store) => {
     const stackCount = Array.isArray(store.stack) ? store.stack.length : 0;
-    const keptCount = Array.isArray(/** @type {any} */ (store)._kept) ? /** @type {any} */ (store)._kept.length : 0;
+    const keptCount = Array.isArray(/** @type {any} */ (store)._kept)
+        ? /** @type {any} */ (store)._kept.length
+        : 0;
     const leavingCount = Array.isArray(store.leaving) ? store.leaving.length : 0;
 
     return {

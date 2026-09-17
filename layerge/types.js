@@ -229,7 +229,6 @@
  * @typedef {'fullPath'|'path'} BackgroundCompareMode
  */
 
-
 /**
  * LayergeControlledHookContext
  * @typedef {object} LayergeControlledHookContext
