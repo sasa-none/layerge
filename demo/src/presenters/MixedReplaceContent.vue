@@ -3,7 +3,7 @@
         <h2 data-testid="mixed-replace-title">PR3 Mixed Stack - Replace</h2>
         <p class="Help">
             Opened via
-            <code>modal.replace(Component, {fakePath})</code>
+            <code>modal.replace(Component, {url})</code>
             . Closing this presenter should restore the URL to the prior page (returnTo).
         </p>
 

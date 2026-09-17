@@ -10,7 +10,7 @@
 
         <div class="Buttons">
             <button type="button" class="Btn" data-testid="mixed-open-to-push" @click="pushNext">
-                push: modal.push(Component, {fakePath:'/mixed/push'})
+                push: modal.push(Component, {url:'/mixed/push'})
             </button>
             <button type="button" class="Btn" data-testid="mixed-open-closeall" @click="closeAll">
                 closeAll (restoreUrl: true)
@@ -29,7 +29,7 @@ const router = useRouter();
 const layerge = useLayerge();
 
 const pushNext = () => {
-    router.modal.push(MixedPushContent, {fakePath: '/mixed/push'});
+    router.modal.push(MixedPushContent, {url: '/mixed/push'});
 };
 
 const closeAll = () => {

@@ -778,7 +778,7 @@ pnpm dev
 
 The demo is the fastest way to validate **history integration**, **async consistency (latest-wins)**, and **URL integration** (bridge routes).
 
-> The demo app and some E2E test ids still call the deprecated `fakePath` option rather than `url`. Both are accepted, and the behaviors demonstrated are identical. Migrating the demo is tracked in `docs/roadmap.ja.md`.
+> The demo app now uses `url`. Some E2E test ids and spec filenames still carry the older `fakepath` name; renaming them is tracked in `docs/roadmap.ja.md`.
 
 ### Status panel (Home: `/`)
 
@@ -832,10 +832,10 @@ Close order:
   - Expected: presenter disappears (`home-depth=0` / page mode).
   - URL stays `/cache-state` (this flow uses `stackCard.replace('/cache-state')`).
 
-#### 3) `replace(..., {fakePath})` back behavior (Home → Page A)
+#### 3) `replace(..., {url})` back behavior (Home → Page A)
 
 1. From Home, click `router.push('/page-a')` (`data-testid="nav-to-page-a"`)
-2. On Page A, click `modal.replace(Component, { fakePath: '/fake/replace' })` (`data-testid="modal-replace-fakepath"`)
+2. On Page A, click `modal.replace(Component, { url: '/fake/replace' })` (`data-testid="modal-replace-url"`)
 
 - Expected:
   - URL becomes `/fake/replace`

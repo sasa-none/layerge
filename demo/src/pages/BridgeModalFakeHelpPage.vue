@@ -6,7 +6,7 @@
             navigates to
             <code>/fake/help</code>
             via
-            <code>fakePath</code>
+            <code>url</code>
             .
         </p>
         <p class="Help">
@@ -28,8 +28,8 @@ onMounted(() => {
     lastAction.value = 'bridge: /modal/fake-help';
     lastResult.value = '';
 
-    trackNavigation("modal.replace(Component, {fakePath:'/fake/help'})", '/fake/help');
-    router.modal.replace(FakePathContent, {fakePath: '/fake/help'});
+    trackNavigation("modal.replace(Component, {url:'/fake/help'})", '/fake/help');
+    router.modal.replace(FakePathContent, {url: '/fake/help'});
 });
 </script>
 

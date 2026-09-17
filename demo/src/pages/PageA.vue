@@ -5,11 +5,11 @@
                 Buttons here are used by E2E to validate
                 <code>replace()</code>
                 +
-                <code>fakePath</code>
+                <code>url</code>
                 .
             </p>
-            <button type="button" class="Btn" data-testid="modal-replace-fakepath" @click="replaceFakePath">
-                modal.replace(Component, {fakePath:'/fake/replace'})
+            <button type="button" class="Btn" data-testid="modal-replace-url" @click="replaceWithUrl">
+                modal.replace(Component, {url:'/fake/replace'})
             </button>
         </div>
     </PageShell>
@@ -23,11 +23,11 @@ import PageShell from './_PageShell.vue';
 
 const router = useRouter();
 
-const replaceFakePath = () => {
-    lastAction.value = "modal.replace(Component, {fakePath:'/fake/replace'})";
+const replaceWithUrl = () => {
+    lastAction.value = "modal.replace(Component, {url:'/fake/replace'})";
     lastResult.value = '';
     trackNavigation(lastAction.value, '/fake/replace');
-    router.modal.replace(ModalOpenContent, {fakePath: '/fake/replace'});
+    router.modal.replace(ModalOpenContent, {url: '/fake/replace'});
 };
 </script>
 

@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-test('modal.replace(Component, {fakePath}) updates URL and back returns to previous page', async ({page}) => {
+test('modal.replace(Component, {url}) updates URL and back returns to previous page', async ({page}) => {
     await page.goto('/');
 
     // Create an in-app history entry first.
@@ -8,8 +8,8 @@ test('modal.replace(Component, {fakePath}) updates URL and back returns to previ
     await expect(page).toHaveURL(/\/page-a$/);
     await expect(page.getByRole('heading', {name: 'Page A'})).toBeVisible();
 
-    // Replace current entry with fakePath + component overlay.
-    await page.getByTestId('modal-replace-fakepath').click();
+    // Replace current entry with url + component overlay.
+    await page.getByTestId('modal-replace-url').click();
 
     await expect(page).toHaveURL(/\/fake\/replace$/);
     await expect(page.getByTestId('modal-open-content-title')).toBeVisible();

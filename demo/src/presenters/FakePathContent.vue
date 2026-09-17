@@ -3,7 +3,7 @@
         <h3>FakePath Content</h3>
         <p>
             This component is opened via
-            <code>push(Component, {fakePath})</code>
+            <code>push(Component, {url})</code>
             . The URL may point to a path that is not registered as a route.
         </p>
         <p>

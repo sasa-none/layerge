@@ -4,7 +4,7 @@
         <p class="Desc">
             This route is a demo catch-all. It exists to prevent a blank screen when you refresh on an
             unmatched
-            <code>fakePath</code>
+            <code>url</code>
             .
         </p>
 
@@ -17,9 +17,9 @@
             <div class="HelpTitle">Why this matters</div>
             <ul class="List">
                 <li>
-                    <code>push(Component|loader, {fakePath})</code>
+                    <code>push(Component|loader, {url})</code>
                     updates the URL to
-                    <code>fakePath</code>
+                    <code>url</code>
                     .
                 </li>
                 <li>If your app has no route for that path, a full refresh may show nothing.</li>

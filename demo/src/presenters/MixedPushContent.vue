@@ -3,13 +3,13 @@
         <h2 data-testid="mixed-push-title">PR3 Mixed Stack - Push</h2>
         <p class="Help">
             Opened via
-            <code>modal.push(Component, {fakePath})</code>
+            <code>modal.push(Component, {url})</code>
             .
         </p>
 
         <div class="Buttons">
             <button type="button" class="Btn" data-testid="mixed-push-to-replace" @click="replaceNext">
-                replace: modal.replace(Component, {fakePath:'/mixed/replace'})
+                replace: modal.replace(Component, {url:'/mixed/replace'})
             </button>
             <button type="button" class="Btn" data-testid="mixed-push-close" @click="closeTop">
                 closeTop
@@ -36,7 +36,7 @@ const router = useRouter();
 const layerge = useLayerge();
 
 const replaceNext = () => {
-    router.modal.replace(MixedReplaceContent, {fakePath: '/mixed/replace'});
+    router.modal.replace(MixedReplaceContent, {url: '/mixed/replace'});
 };
 
 const closeTop = () => {

@@ -31,8 +31,8 @@
                 <button type="button" class="Btn" data-testid="v3-open" @click="openComponent">
                     modal.open(component)
                 </button>
-                <button type="button" class="Btn" data-testid="v3-push" @click="pushWithFakePath">
-                    modal.push(component, { fakePath: '/modal/v3-guard' })
+                <button type="button" class="Btn" data-testid="v3-push" @click="pushWithUrl">
+                    modal.push(component, { url: '/modal/v3-guard' })
                 </button>
                 <button type="button" class="Btn" data-testid="v3-close-top" @click="closeTop">
                     closeTop()
@@ -61,7 +61,7 @@
                     Choosing <b>Cancel</b> keeps the presenter open. Choosing <b>OK</b> closes.
                 </li>
                 <li>
-                    When opened via <b>push+fakePath</b>, using the browser back button should also trigger the guard.
+                    When opened via <b>push+url</b>, using the browser back button should also trigger the guard.
                 </li>
             </ul>
         </div>
@@ -116,8 +116,8 @@ const openComponent = () => {
     });
 };
 
-const pushWithFakePath = () => {
-    router.modal.push(V3LeaveGuardContent, {fakePath: '/modal/v3-guard'});
+const pushWithUrl = () => {
+    router.modal.push(V3LeaveGuardContent, {url: '/modal/v3-guard'});
 
     void nextTick(() => {
         const top = router.$layerge?.stack?.[router.$layerge.stack.length - 1];

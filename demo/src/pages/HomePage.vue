@@ -77,7 +77,7 @@
                     data-testid="modal-replace-component"
                     @click="replaceModalComponent"
                 >
-                    modal.replace(Component, {fakePath:'/fake/replace'})
+                    modal.replace(Component, {url:'/fake/replace'})
                 </button>
                 <button
                     type="button"
@@ -91,10 +91,10 @@
         </div>
 
         <div class="Section">
-            <h2 class="SubTitle">Modal (component / loader + fakePath)</h2>
+            <h2 class="SubTitle">Modal (component / loader + url)</h2>
             <div class="Buttons">
                 <button type="button" class="Btn" data-testid="modal-fakepath" @click="openFakePath">
-                    modal.push(Component, {fakePath})
+                    modal.push(Component, {url})
                 </button>
                 <button
                     type="button"
@@ -102,7 +102,7 @@
                     data-testid="modal-fakepath-loader"
                     @click="openFakePathLoader"
                 >
-                    modal.push(loader, {fakePath})
+                    modal.push(loader, {url})
                 </button>
                 <button
                     type="button"
@@ -110,7 +110,7 @@
                     data-testid="modal-fakepath-loader-slow"
                     @click="openFakePathLoaderSlow"
                 >
-                    modal.push(slowLoader, {fakePath})
+                    modal.push(slowLoader, {url})
                 </button>
                 <button
                     type="button"
@@ -118,7 +118,7 @@
                     data-testid="modal-fakepath-loader-fail"
                     @click="openFakePathLoaderFail"
                 >
-                    modal.push(failingLoader, {fakePath})
+                    modal.push(failingLoader, {url})
                 </button>
             </div>
         </div>
@@ -234,8 +234,9 @@
         <div class="Section">
             <h2 class="SubTitle">Deep links (bridge routes)</h2>
             <p class="Help">
-                fakePath is allowed to 404 on refresh unless you provide a catch-all or a bridge route. The
-                following routes are "entry points" that re-open a presenter on mount.
+                A url that points to a path with no matching route is allowed to 404 on refresh unless you
+                provide a catch-all or a bridge route. The following routes are "entry points" that re-open a
+                presenter on mount.
             </p>
             <div class="Routes">
                 <RouterLink to="/modal/fake-help" data-testid="route-bridge-fake-help">
@@ -408,9 +409,9 @@ const openMixedStack = () => {
 };
 
 const replaceModalComponent = () => {
-    setAction("modal.replace(Component, {fakePath:'/fake/replace'})");
-    trackTo("modal.replace(Component, {fakePath:'/fake/replace'})", '/fake/replace');
-    router.modal.replace(ModalOpenContent, {fakePath: '/fake/replace'});
+    setAction("modal.replace(Component, {url:'/fake/replace'})");
+    trackTo("modal.replace(Component, {url:'/fake/replace'})", '/fake/replace');
+    router.modal.replace(ModalOpenContent, {url: '/fake/replace'});
 };
 
 const openModalMismatch = () => {
@@ -432,25 +433,25 @@ const navToPageA = () => {
 };
 
 const openFakePath = () => {
-    setAction("modal.push(Component, {fakePath:'/fake/help'})");
-    trackTo("modal.push(Component, {fakePath:'/fake/help'})", '/fake/help');
-    router.modal.push(FakePathContent, {fakePath: '/fake/help'});
+    setAction("modal.push(Component, {url:'/fake/help'})");
+    trackTo("modal.push(Component, {url:'/fake/help'})", '/fake/help');
+    router.modal.push(FakePathContent, {url: '/fake/help'});
 };
 
 const openFakePathLoader = () => {
-    setAction("modal.push(loader, {fakePath:'/fake/help-async'})");
-    trackTo("modal.push(loader, {fakePath:'/fake/help-async'})", '/fake/help-async');
+    setAction("modal.push(loader, {url:'/fake/help-async'})");
+    trackTo("modal.push(loader, {url:'/fake/help-async'})", '/fake/help-async');
 
     const loader = () => {
         return import('../presenters/FakePathContent.vue');
     };
 
-    router.modal.push(loader, {fakePath: '/fake/help-async'});
+    router.modal.push(loader, {url: '/fake/help-async'});
 };
 
 const openFakePathLoaderSlow = () => {
-    setAction("modal.push(slowLoader, {fakePath:'/fake/help-slow'})");
-    trackTo("modal.push(slowLoader, {fakePath:'/fake/help-slow'})", '/fake/help-slow');
+    setAction("modal.push(slowLoader, {url:'/fake/help-slow'})");
+    trackTo("modal.push(slowLoader, {url:'/fake/help-slow'})", '/fake/help-slow');
 
     const slowLoader = () => {
         return new Promise((resolve) => {
@@ -460,12 +461,12 @@ const openFakePathLoaderSlow = () => {
         });
     };
 
-    router.modal.push(slowLoader, {fakePath: '/fake/help-slow'});
+    router.modal.push(slowLoader, {url: '/fake/help-slow'});
 };
 
 const openFakePathLoaderFail = () => {
-    setAction("modal.push(failingLoader, {fakePath:'/fake/help-fail'})");
-    trackTo("modal.push(failingLoader, {fakePath:'/fake/help-fail'})", '/fake/help-fail');
+    setAction("modal.push(failingLoader, {url:'/fake/help-fail'})");
+    trackTo("modal.push(failingLoader, {url:'/fake/help-fail'})", '/fake/help-fail');
 
     const failingLoader = () => {
         return new Promise((_resolve, reject) => {
@@ -475,7 +476,7 @@ const openFakePathLoaderFail = () => {
         });
     };
 
-    router.modal.push(failingLoader, {fakePath: '/fake/help-fail'});
+    router.modal.push(failingLoader, {url: '/fake/help-fail'});
 };
 
 const openUrlQueryHash = () => {
@@ -639,8 +640,8 @@ const closeTopVsSlowLoader = () => {
         });
     };
 
-    trackTo("modal.push(slowLoader, {fakePath:'/fake/help-slow-close'})", '/fake/help-slow-close');
-    router.modal.push(slowLoader, {fakePath: '/fake/help-slow-close'});
+    trackTo("modal.push(slowLoader, {url:'/fake/help-slow-close'})", '/fake/help-slow-close');
+    router.modal.push(slowLoader, {url: '/fake/help-slow-close'});
 
     // Close quickly while loader is still pending.
     window.setTimeout(() => {

@@ -8,8 +8,8 @@ test('replace-close restores URL to from.fullPath', async ({page}) => {
     await expect(page).toHaveURL(/\/page-a$/);
     await expect(page.getByRole('heading', {name: 'Page A'})).toBeVisible();
 
-    // Replace current entry with fakePath + component overlay.
-    await page.getByTestId('modal-replace-fakepath').click();
+    // Replace current entry with url + component overlay.
+    await page.getByTestId('modal-replace-url').click();
     await expect(page).toHaveURL(/\/fake\/replace$/);
     await expect(page.getByTestId('modal-open-content-title')).toBeVisible();
 

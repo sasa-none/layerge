@@ -6,7 +6,7 @@
             <div>Toggle <b>dirty</b>/<b>pending</b>, then try closing via:</div>
             <ul>
                 <li>the page buttons (closeTop / closeAll)</li>
-                <li>the browser back button (when opened with push+fakePath)</li>
+                <li>the browser back button (when opened with push+url)</li>
                 <li>Esc key (if enabled in your environment)</li>
             </ul>
             <div>
