@@ -3,6 +3,7 @@ import pluginVue from 'eslint-plugin-vue';
 import pluginA11yVue from 'eslint-plugin-vuejs-accessibility';
 import jsdoc from 'eslint-plugin-jsdoc';
 import prettier from '@vue/eslint-config-prettier';
+import tseslint from 'typescript-eslint';
 
 export default [
     js.configs.recommended,
@@ -13,7 +14,7 @@ export default [
     prettier,
     {
         files: [
-            'layerge/**/*.{js,cjs,mjs,vue}',
+            'layerge/**/*.{js,cjs,mjs,ts,vue}',
             'demo/src/**/*.{js,cjs,mjs,vue}'
         ],
         languageOptions: {
@@ -80,6 +81,19 @@ export default [
             ]
         }
     },
+    // TypeScript 移行（docs/spec-typescript-migration.ja.md 段階 0）。
+    // 移行対象は layerge/ のみで、demo / tests / e2e は .js のまま（仕様書 5-3）。
+    // 型情報を要する recommendedTypeChecked は導入していない。必要になった段階で判断する。
+    ...tseslint.config({
+        files: ['layerge/**/*.ts'],
+        extends: [tseslint.configs.recommended],
+        rules: {
+            // JSDoc の @param / @returns は型の重複になるため、.ts では型の記載を求めない。
+            // 説明文の規約は移行完了後に再定義する（仕様書 5-2）。
+            'jsdoc/require-param-type': 'off',
+            'jsdoc/require-returns-type': 'off'
+        }
+    }),
     {
         files: ['**/*.vue'],
         rules: {

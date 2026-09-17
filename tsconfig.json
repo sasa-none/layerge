@@ -1,0 +1,42 @@
+{
+    // TypeScript 全面移行の基盤設定（docs/spec-typescript-migration.ja.md 段階 0）
+    //
+    // 出力は Vite（lib mode）が担当します。tsc / vue-tsc は型検査にのみ使い、
+    // 型定義の生成（declaration / emitDeclarationOnly）は段階 7 で有効化します。
+    "compilerOptions": {
+        "noEmit": true,
+
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+        "skipLibCheck": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+
+        // 移行期間中は .ts と .js が混在します（仕様書 2-2）。
+        // 既存の .js は解決対象に含めますが、型検査はしません（checkJs は既定の false）。
+        // 受け入れ条件 2 のとおり、移行完了時に allowJs を外します。
+        "allowJs": true,
+
+        // 仕様書 6-1 の方針案に従い、段階 0 では緩く始めて段階ごとに引き上げます。
+        // 引き上げは下の各フラグを true にしていく形で行ってください。
+        // 内部実装の厳密さと公開契約の厳密さは分けて考えます。
+        // **公開面（index.d.ts に出る型）に any を出さないことは絶対条件です。**
+        "strict": false,
+        "noImplicitAny": false,
+        "strictNullChecks": false,
+        "strictFunctionTypes": false,
+        "strictBindCallApply": false,
+        "strictPropertyInitialization": false,
+        "noImplicitThis": false,
+        "useUnknownInCatchVariables": false,
+        "alwaysStrict": true
+    },
+    // 対象はライブラリ本体のみです。demo / tests / e2e の .ts 化は行いません（仕様書 5-3）。
+    "include": ["layerge/**/*.ts", "layerge/**/*.js", "layerge/**/*.vue"],
+    "exclude": ["node_modules", "dist"]
+}
