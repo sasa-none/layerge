@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-09-17（TypeScript 移行方針の確定を反映）
+最終更新: 2026-09-17（A-2 / A-3 / A-5 / A-6 の完了を反映）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -22,12 +22,13 @@ B-1 は [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md) を
 
 ### Claude Code への着手順
 
-1. **A-2 / A-3**（git init と `.gitignore`）— **必ず最初に行うこと。**
+1. ~~**A-2 / A-3**（git init と `.gitignore`）~~ ✅ **完了**（コミット `9bfdf24`。`.gitattributes` で改行コードを LF に統一する対応も追加されています）
+   以下は当初の指示です。**必ず最初に行うこと。**
    現在このリポジトリは版管理されていないため、これ以降の削除・改名・移行が**取り消せません。**
    特に A-6 はファイル削除、B-1 は全ファイルの書き換えを伴います。退避先を作ってから着手してください。
-2. **A-6**（デッドコード削除）— B-1 段階 5 の前提
-3. **A-5**（型定義に `usePresenterLeaveGuard` 追加）— 宣言は A-5 の節にそのまま貼れる形で記載
-4. **A-7**（デモの `url` 移行）
+2. ~~**A-6**（デッドコード削除）~~ ✅ **完了**（コミット `c4c2bb3`）
+3. ~~**A-5**（型定義に `usePresenterLeaveGuard` 追加）~~ ✅ **完了**（コミット `08a4065`）
+4. **A-7**（デモの `url` 移行）← **次はここ**
 5. **B-2**（CI）— ここまでの成果を自動検証できる状態にする
 6. **B-1**（TypeScript 移行）— 仕様書に従い段階 0 から順に
 
@@ -104,46 +105,50 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 ---
 
-### A-5. `usePresenterLeaveGuard` が型定義に存在しない 🔴
+### A-5. 型定義への `usePresenterLeaveGuard` 追加 ✅ 対応済み（2026-09-17）
 
-`layerge/index.js` は `usePresenterLeaveGuard` をエクスポートしていますが、**`index.d.ts` / `index.d.cts` に宣言がありません。**
+コミット `08a4065`。`index.d.ts` / `index.d.cts` の 2 ファイルのみの単独コミットです。
 
-TypeScript 利用者がこの composable を import すると、`has no exported member` エラーになります。公開エクスポートでありながら型が付いていない唯一の API です。
+本書に記載していた貼り付け用の宣言は、実装（`layerge/composables/usePresenterLeaveGuard.js`）と JSDoc に突き合わせて検証したうえで採用され、**修正は不要でした。**
 
-**対応方針:** `index.d.ts` / `index.d.cts` に宣言を追加する。実装のシグネチャは次のとおりです。
+これにより `layerge/index.js` の公開エクスポート **9 個すべてに型宣言が揃いました。**
 
-```ts
-export declare function usePresenterLeaveGuard(opts?: {
-    dirty?: Ref<boolean> | boolean;
-    pending?: Ref<boolean> | boolean;
-    commit?: () => Promise<void>;
-    message?: string;
-    confirm?: (ctx: {entryId: string; reason: string}) => boolean | Promise<boolean>;
-}): {
-    entryId: ComputedRef<string | null>;
-    dirty: Ref<boolean> | boolean;
-    pending: Ref<boolean> | boolean;
-};
-```
+| 公開エクスポート | 型宣言 |
+|---|---|
+| `createLayergeRouter` / `LayergeView` / `LayergeTransition` / `LayergeLink` | 既存 |
+| `usePresenter` / `useLayerge` / `usePresenterBindings` / `useLayergeLink` | 既存 |
+| `usePresenterLeaveGuard` | 本コミットで追加 |
 
-あわせて、`<LayergeLink>` は `index.d.ts` で `Component` としか宣言されておらず、props の型が効きません。TypeScript 移行（B-1）の際に解消を検討してください。
+補足事項:
+
+- `Ref` 型が未 import だったため、`vue` からの型 import に追加されています
+- 新しい `interface` / `type` は公開していません（[AGENTS.md](../AGENTS.md) の「公開 API を増やさない」に従い、インライン型のまま）
+- `usePresenterLeaveGuard.js` は `__layergeRunPresenterLeaveGuard` 等の内部関数も export していますが、`index.js` が名前指定の re-export（`export *` ではない）のため公開面には漏れていません
+- **`tsc` による型検査は未実施です。**TypeScript が未導入であり、導入すると `package.json` と lockfile が変わるため A-5 の範囲外と判断されました。B-1 で型定義がビルド生成に一本化されれば、この宣言も自動検証の対象になります
+
+> **B-1 への申し送り:** 本宣言は手書きであり、まだ機械的な検証を受けていません。
+> 仕様書 6-2「生成された型定義が現行の手書き型と一致しない可能性」の差分レビューでは、**この宣言も検証対象に含めてください。**
 
 ---
 
-### A-6. `layerge/router/usePresenterLeaveGuard.js` がデッドコード 🔴
+### A-6. デッドコードの削除 ✅ 対応済み（2026-09-17）
 
-同名の composable が 2 つ存在し、**シグネチャが互換していません。**
+コミット `c4c2bb3`。`layerge/router/usePresenterLeaveGuard.js`（99 行）を削除しました。**他の変更を含まない単独コミットです。**
 
-| ファイル | シグネチャ | 状態 |
-|---|---|---|
-| `layerge/composables/usePresenterLeaveGuard.js` | `{dirty, pending, commit, message, confirm}` | **これが公開版。**`index.js` からエクスポートされ、`createLayergeRouter` が実際に呼び出している |
-| `layerge/router/usePresenterLeaveGuard.js` | `{entryId, when, confirm, guardSpaNavigation}` | **どこからも import されていないデッドコード** |
+削除前の検証で、当初の想定より深刻な状態であることが判明しました。
 
-さらに悪いことに、**`docs/v3.0.md` が記載していたのは後者（デッドコード側）でした。**
-つまり公開ドキュメントが、存在しない API の使い方を説明していたことになります。
+| 検証項目 | 結果 |
+|---|---|
+| ソース中の import | **0 件**（参照は docs のみ） |
+| 実際の利用先 | `index.js` / `createLayergeRouter.js` / `internals/devMetrics.js` / デモはすべて `layerge/composables/` 側を指していた |
+| 依存先 `router.$layerge.registerLeaveGuard` | **実装がリポジトリに存在しない** |
 
-**対応方針:** `layerge/router/usePresenterLeaveGuard.js` を削除する。同名ファイルが残っている限り、将来また取り違えが起きます。
-`docs/v3.0.md` には暫定の警告注記を追加済みです。
+つまりこのファイルは「import されていない」だけでなく、**仮に import して使ってもガードが登録されず、無言で機能しない**コードでした。
+`docs/v3.0.md` が説明していたのは、公開されておらず、かつ動作もしないこの実装だったことになります。
+
+削除後の検証はすべて緑です。`pnpm test`（28 テスト）、`pnpm lint:check`（0 errors、警告は 89 → 87 に減少）、`pnpm test:e2e`（43 スペック / 58 テスト）、`pnpm build` が成功し、`layerge/index.js` の公開エクスポートは削除前後で変化していません。
+
+関連ドキュメント（`docs/v3.0.md` / 本書 / TypeScript 移行仕様書）は Cowork 側で更新済みです。
 
 ---
 
@@ -227,3 +232,6 @@ README には `vue@3` / `vue-router@4` / `vue-router@5` で検証済みと記載
 - [x] README の Public API セクションを実装基準で全面改訂（A-1）
 - [x] `docs/v3.0.md` の誤記に警告注記を追加（A-6 の暫定対応）
 - [x] TypeScript 移行仕様書の作成（B-1）
+- [x] A-2 / A-3 git 初期化と `.gitignore` / `.gitattributes`（`9bfdf24`）
+- [x] A-6 デッドコード削除と関連ドキュメントの更新（`c4c2bb3`）
+- [x] A-5 型定義への `usePresenterLeaveGuard` 追加（`08a4065`）。公開エクスポート 9 個すべてに型宣言が揃った
