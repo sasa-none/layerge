@@ -1,0 +1,32 @@
+# 依存パッケージ
+node_modules/
+
+# ビルド生成物（ルート / demo / consumer-* のいずれも対象）
+# 公開物には package.json の files フィールドで含まれるため、版管理からは外す
+dist/
+
+# npm pack の生成物・作業用アーカイブ
+*.tgz
+*.zip
+
+# Playwright の出力
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Vite のキャッシュ
+.vite/
+
+# ログ
+*.log
+
+# 環境変数（秘匿値の誤コミット防止）
+.env
+.env.*
+
+# エディタ / OS が生成するもの
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

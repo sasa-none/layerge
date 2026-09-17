@@ -1,0 +1,4 @@
+.vscode/**
+node_modules/**
+web/dist/**
+web/storybook-static/**
