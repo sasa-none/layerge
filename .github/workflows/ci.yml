@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# 同じブランチで新しい push があれば古い実行は打ち切る
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # engines.node は >=20。最小サポート版で検証する
+  NODE_VERSION: '20'
+
+jobs:
+  lint-and-test:
+    name: lint + unit test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # lint:check は layerge/ と demo/src/ の双方を検査する（ROADMAP A-9）
+      - run: pnpm lint:check
+
+      - run: pnpm test
+
+      # 公開ビルドが通ること自体も検証対象
+      - run: pnpm build
+
+  e2e:
+    name: e2e (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm e2e:install-deps
+
+      - run: pnpm e2e:install
+
+      # demo は vite の alias で layerge/ のソースを直接参照するため、事前ビルドは不要
+      - run: pnpm test:e2e
+
+      - name: 失敗時のトレースを保存する
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  pack-and-consumers:
+    name: npm pack + consumer build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        consumer:
+          - consumer-vue-router-4
+          - consumer-vue-router-5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # npm pack は prepack を持たないため、dist は先に作っておく必要がある
+      - run: pnpm build
+
+      - name: 公開物の構成を検証する
+        run: node scripts/verify-pack.mjs
+
+      - name: tarball を生成する
+        run: npm pack
+
+      # consumer は workspace の外側にあるため --ignore-workspace が必要。
+      # また tarball の integrity は毎回変わるので lockfile は固定できない
+      # （lockfile 自体は vue / vue-router / vite の固定に使っている）。
+      - name: 消費側をインストールする
+        working-directory: ${{ matrix.consumer }}
+        run: pnpm install --ignore-workspace --no-frozen-lockfile
+
+      - name: 消費側をビルドする
+        working-directory: ${{ matrix.consumer }}
+        run: pnpm build

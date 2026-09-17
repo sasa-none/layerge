@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-09-17（A-9 完了、A-10 を追加）
+最終更新: 2026-09-17（A-10 完了。優先度 A は A-4 を除きすべて完了）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -31,8 +31,8 @@ B-1 は [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md) を
 4. ~~**A-7**（デモの `url` 移行）~~ ✅ **完了**（コミット `f7de883`）
    4-b. ~~**A-8**（`fakepath` 命名の一掃）~~ ✅ **完了**（コミット `df2359d`）
 5. ~~**A-9**（lint の検査範囲を揃える）~~ ✅ **完了**（コミット `765c0d3`）
-   5-b. **A-10**（`no-console` の環境依存解消）← **B-2 の前に決着させること**
-6. **B-2**（CI）— A-9 の完了後に着手
+   5-b. ~~**A-10**（`no-console` の環境依存解消）~~ ✅ **完了**（コミット `f999228`）
+6. **B-2**（CI）← **次はここ。**A-9 / A-10 により lint は決定的になっており、初回から赤になる要因は解消済み
 7. **B-1**（TypeScript 移行）— 仕様書に従い段階 0 から順に
 
 > 各項目の完了条件は共通して **`pnpm test` と `pnpm lint:check` が通り、E2E 43 本が緑であること**です。
@@ -233,32 +233,46 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 ---
 
-### A-10. `no-console` の環境依存を解消する 🟡 **推奨: `allow` 付きの固定値へ**
+### A-10. `no-console` の環境依存の解消 ✅ 対応済み（2026-09-17）
 
-`eslint.config.js` の以下 2 行が `NODE_ENV` に依存しており、**lint 結果が環境で変わります。**
-
-```js
-'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-```
-
-この非決定性により、`NODE_ENV` 未設定で `pnpm lint` を実行すると `// eslint-disable-next-line no-console` が「未使用ディレクティブ」と判定されて**自動削除されます**（A-9 で実際に 3 件削除されました）。CI が `NODE_ENV=production` を設定すると、今度は警告が増えます。
-
-#### 推奨する対応
+コミット `f999228`。`NODE_ENV` 依存をやめ、固定値にしました。
 
 ```js
 'no-console': ['warn', {allow: ['warn', 'info', 'debug', 'error']}],
 'no-debugger': 'warn',
 ```
 
-理由は次のとおりです。
+#### 検証済みの事実
 
-- **ライブラリは意図的に console へ出力します。**`warnDev()`、DecisionTrace のダンプ、`debug: true` 時の `afterEach` ログは設計された機能であり、`<LayergeLink>` の誤用警告も同様です。使用箇所は 16 で、`warnDev` に集中しておらず 3 ファイルに散在しています
-- 現在使われているのは `warn` / `info` / `debug` / `error` の 4 種のみで、**`console.log` は 1 箇所もありません。**したがって上記 `allow` 指定での指摘は **0 件**で、既存コードへの影響はありません
-- それでいて、将来デバッグ用に紛れ込んだ `console.log` は検出できます
-- 何より**環境非依存になり、lint 結果が決定的になります。**A-9 でディレクティブが消えたような事故が起きなくなります
+| 条件 | `pnpm lint:check` | 指摘件数 |
+|---|---|---|
+| `NODE_ENV` 未設定 | exit 0 | 0 errors / 55 warnings |
+| `NODE_ENV=production` | exit 0 | 0 errors / 55 warnings — **完全一致** |
 
-単に `'off'` に固定するより、`console.log` を捕捉できる分こちらを推します。**判断はユーザーに委ねます。**
+`no-console` / `no-debugger` の指摘は **0 件**です。B-2 の CI が `NODE_ENV` をどう設定しても lint 結果は変わりません。
+
+**根本原因が消えたことも実証されています。**`pnpm lint` を再実行しても `eslint-disable-next-line no-console` が削除されなくなりました。ルールが常に有効なため「未使用ディレクティブ」と判定されないためです。A-9 で 3 件が消えた事故は再発しません。
+
+#### ⚠️ 本書の記載ミスと、その訂正
+
+**本項目の起票時、本書は「`console.log` は 1 箇所もありません。したがって `allow` 指定での指摘は 0 件」と記載していましたが、これは誤りでした。**
+
+実際には [demo/src/navLog.js:75](../demo/src/navLog.js) に 1 件存在しました。デモのナビゲーション結果を出力する意図的なものです。実装側で、理由コメント付きの `eslint-disable-next-line` により抑止されています（`allow` に `log` を足すとルールの意味が失われるため、この対応が正しい判断です）。
+
+**誤った原因:** 使用実態を調べる際、検索範囲を `layerge/` に限定したまま、結論を「lint 対象全体」について書いてしまいました。**A-9 で lint の検査範囲に `demo/src` が加わった直後であり、確認範囲もそれに合わせて広げるべきでした。**
+
+実際の使用実態は次のとおりです。
+
+| メソッド | 件数 | 扱い |
+|---|---:|---|
+| `console.warn` | 15 | `allow` でカバー |
+| `console.info` | 3 | `allow` でカバー |
+| `console.debug` | 3 | `allow` でカバー |
+| `console.error` | 2 | `allow` でカバー |
+| `console.log` | **1** | `demo/src/navLog.js` — 個別に抑止 |
+
+> **教訓（今後の起票時に適用すること）:** 本書に数値や「〜は存在しない」と書く場合、**確認コマンドの対象範囲が結論の範囲と一致しているか**を確かめること。
+> 本件は実装側が本書の数値を鵜呑みにせず実測したために発見されました。**本書の記載は実装にとって契約ですが、無謬ではありません。**齟齬を見つけた場合は本書を疑ってください。
 
 ---
 
@@ -342,3 +356,4 @@ README には `vue@3` / `vue-router@4` / `vue-router@5` で検証済みと記載
 - [x] A-7 デモの `fakePath` → `url` 移行（`f7de883`）
 - [x] A-8 `fakepath` 命名の一掃（`df2359d`）。`layerge/` と `tests/` は無変更
 - [x] A-9 lint の検査範囲の統一と整形権威の一本化（`765c0d3`）。コーディング規約も実態に合わせて訂正
+- [x] A-10 `no-console` の環境依存を解消（`f999228`）。両環境で lint 結果が一致することを確認済み
