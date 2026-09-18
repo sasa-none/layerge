@@ -1,19 +1,13 @@
 <template>
     <slot v-if="custom" :navigate="navigate" :handler="handler" />
 
-    <!--
-      NOTE: :ref に Ref を渡しているが、テンプレートでは unwrap された値（初期値 null）が
-      渡るため elRef は実際には設定されない。invoker は event.currentTarget から解決するため
-      機能自体は動いている。挙動を変えない方針のため段階 6 では修正せず、型エラーのみ抑止する。
-    -->
-    <!-- @vue-expect-error elRef は unwrap されるため VNodeRef と一致しない -->
-    <a v-else :ref="elRef" :href="href" @click="onClick" @keydown="onKeydown">
+    <a v-else :href="href" @click="onClick" @keydown="onKeydown">
         <slot />
     </a>
 </template>
 
 <script setup lang="ts">
-import {computed, inject, ref} from 'vue';
+import {computed, inject} from 'vue';
 import type {Component, PropType} from 'vue';
 import {useRouter} from 'vue-router';
 import type {RouteLocationRaw} from 'vue-router';
@@ -61,11 +55,6 @@ const props = defineProps({
 
 const router = useRouter();
 const $layerge = inject(LayergeKey, null) ?? inject<LayergeStore | null>('$layerge', null);
-
-/**
- * elRef - invoker 登録用の DOM 捕捉
- */
-const elRef = ref<HTMLElement | null>(null);
 
 /**
  * href - 右クリック/新規タブ等のために href を提供します
@@ -129,16 +118,14 @@ const inferEntryIdFromState = (): string | null => {
  * @returns 起点となる DOM（決定できない場合は null）
  */
 const resolveInvokerElement = (event: unknown): HTMLElement | null => {
+    // invoker の起点は常にイベント発火元。custom スロットでは <a> を描画しないため、
+    // 要素を保持する ref を置いても解決には使えない（ROADMAP A-13）。
     if (event && typeof event === 'object' && 'currentTarget' in event) {
         const t = event.currentTarget;
 
         if (t instanceof HTMLElement) {
             return t;
         }
-    }
-
-    if (elRef.value instanceof HTMLElement) {
-        return elRef.value;
     }
 
     return null;
