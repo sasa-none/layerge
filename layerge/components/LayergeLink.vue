@@ -1,16 +1,25 @@
 <template>
     <slot v-if="custom" :navigate="navigate" :handler="handler" />
 
+    <!--
+      NOTE: :ref に Ref を渡しているが、テンプレートでは unwrap された値（初期値 null）が
+      渡るため elRef は実際には設定されない。invoker は event.currentTarget から解決するため
+      機能自体は動いている。挙動を変えない方針のため段階 6 では修正せず、型エラーのみ抑止する。
+    -->
+    <!-- @vue-expect-error elRef は unwrap されるため VNodeRef と一致しない -->
     <a v-else :ref="elRef" :href="href" @click="onClick" @keydown="onKeydown">
         <slot />
     </a>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import {computed, inject, ref} from 'vue';
+import type {Component, PropType} from 'vue';
 import {useRouter} from 'vue-router';
+import type {RouteLocationRaw} from 'vue-router';
 import {isNodeDevEnv} from '../internals/env.js';
 import {LayergeKey} from '../internals/keys';
+import type {LayergeStore} from '../types';
 
 /**
  * LayergeLink - RouterLink互換の最小Link導線
@@ -19,18 +28,28 @@ import {LayergeKey} from '../internals/keys';
  * - prevent/disabled の挙動は凍結仕様に準拠します
  */
 
+/**
+ * props - LayergeLink の props
+ *
+ * ランタイムの宣言（type / required / default）を保ったまま PropType で型を与えます。
+ * 型ベースの defineProps<T>() に置き換えると、component の runtime type が
+ * Function のみに狭まり、presenter の required も失われるため採用しません。
+ */
 const props = defineProps({
     /** presenter 名（必須） */
-    presenter: {type: String, required: true},
+    presenter: {type: String as PropType<string>, required: true},
     /** action（push/replace/open） */
-    action: {type: String, default: 'push'},
+    action: {type: String as PropType<'push' | 'replace' | 'open'>, default: 'push'},
 
     /** RouteLocationRaw (Route mode) */
-    to: {type: [String, Object], required: false},
+    to: {type: [String, Object] as PropType<RouteLocationRaw>, required: false},
     /** Component (Component mode) */
-    component: {type: [Object, Function], required: false},
+    component: {
+        type: [Object, Function] as PropType<Component | (() => Promise<Component>)>,
+        required: false
+    },
     /** url (push/replace only; ignored on open) */
-    url: {type: [String, Object], required: false},
+    url: {type: [String, Object] as PropType<string | RouteLocationRaw>, required: false},
 
     /** RouterLink互換：custom slot */
     custom: {type: Boolean, default: false},
@@ -41,13 +60,12 @@ const props = defineProps({
 });
 
 const router = useRouter();
-const $layerge = inject(LayergeKey, null) ?? inject('$layerge', null);
+const $layerge = inject(LayergeKey, null) ?? inject<LayergeStore | null>('$layerge', null);
 
 /**
  * elRef - invoker 登録用の DOM 捕捉
- * @type {import('vue').Ref<HTMLElement|null>}
  */
-const elRef = ref(null);
+const elRef = ref<HTMLElement | null>(null);
 
 /**
  * href - 右クリック/新規タブ等のために href を提供します
@@ -77,7 +95,7 @@ const href = computed(() => {
         return '#';
     }
     try {
-        return router.resolve(props.to).href;
+        return router.resolve(props.to as RouteLocationRaw).href;
     } catch {
         return '';
     }
@@ -85,9 +103,9 @@ const href = computed(() => {
 
 /**
  * inferEntryIdFromState - 直近の open 操作で作られた entryId を推測します
- * @returns {string|null}
+ * @returns entryId（推測できない場合は null）
  */
-const inferEntryIdFromState = () => {
+const inferEntryIdFromState = (): string | null => {
     if (!$layerge) {
         return null;
     }
@@ -107,10 +125,10 @@ const inferEntryIdFromState = () => {
 
 /**
  * resolveInvokerElement - invoker に使用する DOM を決定します
- * @param {unknown} event - click/keydown event
- * @returns {HTMLElement|null}
+ * @param event - click/keydown event
+ * @returns 起点となる DOM（決定できない場合は null）
  */
-const resolveInvokerElement = (event) => {
+const resolveInvokerElement = (event: unknown): HTMLElement | null => {
     if (event && typeof event === 'object' && 'currentTarget' in event) {
         const t = event.currentTarget;
 
@@ -128,11 +146,10 @@ const resolveInvokerElement = (event) => {
 
 /**
  * callPresenter - presenter API を呼び出します
- * @param {'push'|'replace'|'open'} kind - 種別
- * @param {unknown} [event] - event
- * @returns {void}
+ * @param kind - 種別
+ * @param event - event
  */
-const callPresenter = async (kind, event) => {
+const callPresenter = async (kind: 'push' | 'replace' | 'open', event?: unknown): Promise<void> => {
     if (props.disabled) {
         return;
     }
@@ -185,23 +202,28 @@ const callPresenter = async (kind, event) => {
         const routerAction = kind === 'replace' ? 'replace' : 'push';
         const current = router?.currentRoute?.value;
 
-        /** @type {import('vue-router').RouteLocationRaw} */
-        let navTarget;
+        let navTarget: RouteLocationRaw;
         if (typeof props.url === 'string') {
             navTarget = props.url;
         } else {
             // Partial RouteLocationRaw: merge with current route.
             // If path/name are explicitly provided, prefer them.
-            const urlObj = props.url;
+            // url は RouteLocationRaw の部分形を許容するため、参照用の形を与える
+            const urlObj = props.url as Partial<{
+                path: string;
+                name: string;
+                query: Record<string, unknown>;
+                hash: string;
+            }>;
             if (urlObj && (urlObj.path != null || urlObj.name != null)) {
-                navTarget = urlObj;
+                navTarget = urlObj as RouteLocationRaw;
             } else {
                 navTarget = {
                     ...(current ?? {}),
                     ...(urlObj ?? {}),
                     query: {...(current?.query ?? {}), ...(urlObj?.query ?? {})},
                     hash: urlObj?.hash ?? current?.hash
-                };
+                } as RouteLocationRaw;
             }
         }
 
@@ -210,7 +232,7 @@ const callPresenter = async (kind, event) => {
             .then(() => {
                 try {
                     if (api && typeof api.open === 'function') {
-                        api.open(/** @type {any} */ (props.to));
+                        api.open(/** @type {any} */ props.to);
                     }
 
                     // invoker 登録（凍結仕様：entryId ↔ el の接続点）
@@ -249,9 +271,9 @@ const callPresenter = async (kind, event) => {
         try {
             if (mode.value === 'route') {
                 if (kind === 'replace') {
-                    router.replace(target);
+                    router.replace(target as RouteLocationRaw);
                 } else if (kind === 'push') {
-                    router.push(target);
+                    router.push(target as RouteLocationRaw);
                 }
             }
         } catch {

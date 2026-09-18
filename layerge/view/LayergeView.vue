@@ -23,12 +23,20 @@
     </template>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import {computed, defineComponent, h, inject, provide, shallowReactive, shallowRef} from 'vue';
+import type {Component, PropType} from 'vue';
 import {RouterView} from 'vue-router';
 import {PresenterContextKey, EntryContextKey, LayergeKey} from '../internals/keys';
+import type {
+    LayergeEntryContext,
+    LayergeEntryPhase,
+    LayergeStore,
+    PresenterDefinition,
+    PresenterEntry
+} from '../types';
 
-const $layerge = inject('$layerge', null) ?? inject(LayergeKey, null);
+const $layerge = inject<LayergeStore | null>('$layerge', null) ?? inject(LayergeKey, null);
 
 if (!$layerge) {
     throw new Error('[LayergeView] $layerge is not provided.');
@@ -71,10 +79,10 @@ const baseRouterViewProps = computed(() => {
 
 /**
  * presenterDefOf - entryからPresenter定義を取得します
- * @param {import('../types').PresenterEntry|null} entry - Presenterエントリ
- * @returns {import('../types').PresenterDefinition|null} 定義（存在しない場合はnull）
+ * @param entry - Presenterエントリ
+ * @returns 定義（存在しない場合はnull）
  */
-const presenterDefOf = (entry) => {
+const presenterDefOf = (entry: PresenterEntry | null): PresenterDefinition | null => {
     if (!entry) {
         return null;
     }
@@ -90,10 +98,10 @@ const presenterDefOf = (entry) => {
 
 /**
  * presenterComponentOf - entryからPresenterコンポーネントを取得します
- * @param {import('../types').PresenterEntry|null} entry - Presenterエントリ
- * @returns {import('vue').Component|string} Presenterコンポーネント（存在しない場合は'div'）
+ * @param entry - Presenterエントリ
+ * @returns Presenterコンポーネント（存在しない場合は'div'）
  */
-const presenterComponentOf = (entry) => {
+const presenterComponentOf = (entry: PresenterEntry | null): Component | string => {
     const def = presenterDefOf(entry);
 
     if (!def) {
@@ -106,7 +114,6 @@ const presenterComponentOf = (entry) => {
 /**
  * stackVisible - 「積層表示」を有効にするか
  * - v1: stack && cache のときだけ “全段表示 + freeze” を行う（迷わせない）
- * @returns {boolean}
  */
 const stackVisible = computed(() => {
     const topEntry = top.value;
@@ -134,20 +141,26 @@ const stackVisible = computed(() => {
 const PresenterLayer = defineComponent({
     name: 'PresenterLayer',
     props: {
-        entry: {type: Object, required: true},
-        presenterComponent: {type: [Object, String, Function], required: true},
+        entry: {type: Object as PropType<PresenterEntry>, required: true},
+        presenterComponent: {
+            type: [Object, String, Function] as PropType<Component | string>,
+            required: true
+        },
         isTop: {type: Boolean, required: true},
         index: {type: Number, required: true},
         depth: {type: Number, required: true}
     },
     setup(props) {
-        const ctxRef = shallowRef(null);
+        const ctxRef = shallowRef<{
+            entry: PresenterEntry;
+            handle: PresenterEntry['handle'];
+            isTop: boolean;
+        } | null>(null);
 
         /**
          * entryContext - Presenter 配下の公開ステート（EntryContext）
-         * @type {import('../types').LayergeEntryContext}
          */
-        const entryContext = shallowReactive({
+        const entryContext: LayergeEntryContext = shallowReactive({
             entryId: '',
             phase: 'active',
             index: 0,
@@ -160,10 +173,10 @@ const PresenterLayer = defineComponent({
 
         /**
          * normalizePhase - phase を正規化します
-         * @param {unknown} phase - 受け取った phase
-         * @returns {import('../types').LayergeEntryPhase} 正規化した phase
+         * @param phase - 受け取った phase
+         * @returns 正規化した phase
          */
-        const normalizePhase = (phase) => {
+        const normalizePhase = (phase: unknown): LayergeEntryPhase => {
             if (phase === 'enter' || phase === 'active' || phase === 'leave') {
                 return phase;
             }
@@ -228,7 +241,6 @@ const PresenterLayer = defineComponent({
 
 /**
  * visibleStackEntries - stackVisibleのときは全段、そうでなければtopのみ
- * @returns {import('../types').PresenterEntry[]} 表示対象のPresenterエントリ配列
  */
 const visibleStackEntries = computed(() => {
     const stack = $layerge.stack ?? [];
@@ -247,7 +259,6 @@ const visibleStackEntries = computed(() => {
 /**
  * renderEntries - 表示中（stack）とleave中（leaving）の結合
  * - leavingはstackVisibleに関係なく必ず描画対象
- * @returns {import('../types').PresenterEntry[]} 描画対象のPresenterエントリ配列
  */
 const renderEntries = computed(() => {
     const stackPart = visibleStackEntries.value;
@@ -255,8 +266,8 @@ const renderEntries = computed(() => {
     const keptPart = $layerge._kept ?? [];
 
     // NOTE: kept は stack/leaving と重複しない前提だが、保険としてidで重複排除する
-    const seen = new Set();
-    const out = [];
+    const seen = new Set<string>();
+    const out: PresenterEntry[] = [];
     for (const e of [...stackPart, ...leavingPart, ...keptPart]) {
         if (!e || typeof e.id !== 'string') {
             continue;
@@ -273,19 +284,19 @@ const renderEntries = computed(() => {
 
 /**
  * isLeavingEntry - entryがleave中か判定します
- * @param {import('../types').PresenterEntry} entry - Presenterエントリ
- * @returns {boolean} leave中の場合true
+ * @param entry - Presenterエントリ
+ * @returns leave中の場合true
  */
-const isLeavingEntry = (entry) => {
+const isLeavingEntry = (entry: PresenterEntry): boolean => {
     return entry && entry.phase === 'leave';
 };
 
 /**
  * entryIndex - EntryContextのindexを決定します
- * @param {import('../types').PresenterEntry} entry - Presenterエントリ
- * @returns {number} エントリの表示順index
+ * @param entry - Presenterエントリ
+ * @returns エントリの表示順index
  */
-const entryIndex = (entry) => {
+const entryIndex = (entry: PresenterEntry): number => {
     if (isLeavingEntry(entry) && typeof entry._leavingIndex === 'number') {
         return entry._leavingIndex;
     }
@@ -296,10 +307,10 @@ const entryIndex = (entry) => {
 
 /**
  * entryDepth - EntryContextのdepthを決定します
- * @param {import('../types').PresenterEntry} entry - Presenterエントリ
- * @returns {number} スタックの深さ
+ * @param entry - Presenterエントリ
+ * @returns スタックの深さ
  */
-const entryDepth = (entry) => {
+const entryDepth = (entry: PresenterEntry): number => {
     if (isLeavingEntry(entry) && typeof entry._leavingDepth === 'number') {
         return entry._leavingDepth;
     }
@@ -309,10 +320,10 @@ const entryDepth = (entry) => {
 
 /**
  * isTopEntry - EntryContextのisTopを決定します
- * @param {import('../types').PresenterEntry} entry - Presenterエントリ
- * @returns {boolean} 最上位エントリの場合true
+ * @param entry - Presenterエントリ
+ * @returns 最上位エントリの場合true
  */
-const isTopEntry = (entry) => {
+const isTopEntry = (entry: PresenterEntry): boolean => {
     // stack が存在するなら、その top のみが isTop
     if ($layerge.stack && $layerge.stack.length > 0) {
         return activeTopId.value === entry.id;

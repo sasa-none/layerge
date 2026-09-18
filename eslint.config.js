@@ -81,6 +81,25 @@ export default [
             ]
         }
     },
+    // 段階 6: <script setup lang="ts"> を解釈できるよう、.vue の script ブロックに
+    // TypeScript パーサを割り当てる（vue-eslint-parser の parserOptions.parser）。
+    {
+        files: ['layerge/**/*.vue'],
+        languageOptions: {
+            parserOptions: {
+                parser: tseslint.parser
+            }
+        },
+        plugins: {'@typescript-eslint': tseslint.plugin},
+        rules: {
+            // 型注釈中の識別子を base の no-unused-vars が未使用と誤検出するため、
+            // .ts と同じく TypeScript 版に委ねる。any の扱いも .ts と揃える（仕様書 6-1）
+            'no-unused-vars': 'off',
+            '@typescript-eslint/no-unused-vars': 'error',
+            '@typescript-eslint/no-explicit-any': 'error'
+        }
+    },
+
     // TypeScript 移行（docs/spec-typescript-migration.ja.md 段階 0）。
     // 移行対象は layerge/ のみで、demo / tests / e2e は .js のまま（仕様書 5-3）。
     // 型情報を要する recommendedTypeChecked は導入していない。必要になった段階で判断する。

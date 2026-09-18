@@ -459,6 +459,30 @@ return reactive({ /* ... */ }) as any;            // 論外
 
 入力側の注釈を省くと、フィールドを書き間違えても通ってしまいます。**注釈は必ず入力側に置いてください。**
 
+### 6-6. `.vue` の props を型ベース宣言に変えてはいけない（2026-09-18 追記 / 段階 6 で実地に遭遇）
+
+`defineProps<T>()` + `withDefaults()` の型ベース宣言へ移すと、**ランタイムの props 宣言が変わります。**型注釈の追加のつもりが、実行時の挙動を変えます。
+
+| prop | ランタイム宣言（変換前） | 型ベース宣言にした場合 |
+|---|---|---|
+| `presenter` | `{type: String, required: true}` | **`{}`** — `required` が失われる |
+| `component` | `{type: [Object, Function]}` | **`{type: Function}`** — オブジェクトを渡すと dev 警告が出る |
+
+`<LayergeLink :component="SomeComponent">` にコンポーネントオブジェクトを渡すのは主要な使い方であり、**実害があります。**
+
+**採用する書き方:** ランタイム宣言（`defineProps({...})`）を保ったまま、`PropType<T>` で型を与えてください。
+
+```ts
+const props = defineProps({
+    presenter: {type: String as PropType<string>, required: true},
+    component: {type: [Object, Function] as PropType<Component>, required: false}
+});
+```
+
+この形なら `dist` の props 出力が変換前と完全に一致し、かつ利用側で props の型が効きます（段階 6 で、誤用 3 件が型エラーになり正しい 2 例は通ることを確認済み）。
+
+> **この種の変化は `typecheck` では検出できません。**段階 5-b と同じ `dist` の比較でのみ見つかります。`.vue` を触る際は必ず比較してください。
+
 ### 6-4. `$layerge` ストアの内部メンバーの露出
 
 `LayergeStore` は `_exitPresenterMode` / `_closeTop` などアンダースコア接頭辞の内部メンバーを持ち、現在は `/** @internal */` で注釈されています。

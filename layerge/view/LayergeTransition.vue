@@ -18,10 +18,11 @@
     </Transition>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import {computed, inject, shallowReactive, onBeforeUnmount, onMounted, useAttrs} from 'vue';
 import {isNodeDevEnv} from '../internals/env.js';
 import {EntryContextKey, LayergeKey} from '../internals/keys';
+import type {LayergeEntryContext, LayergeStore} from '../types';
 
 defineOptions({
     inheritAttrs: false
@@ -29,10 +30,9 @@ defineOptions({
 
 const attrs = useAttrs();
 /**
- * entryContext - Presenter 配下の公開ステート（EntryContext）
- * @type {import('../types').LayergeEntryContext}
+ * entry - Presenter 配下の公開ステート（EntryContext）
  */
-let entry = inject(EntryContextKey, null);
+let entry: LayergeEntryContext | null = inject(EntryContextKey, null);
 
 if (!entry) {
     // dev では明確に失敗させて誤用に気づけるようにする
@@ -51,7 +51,7 @@ if (!entry) {
         isTop: false
     });
 }
-const $layerge = inject(LayergeKey, null) ?? inject('$layerge', null);
+const $layerge = inject(LayergeKey, null) ?? inject<LayergeStore | null>('$layerge', null);
 
 // v1.x: この entry は LayergeTransition により enter/leave を管理される。
 // Transition 未使用の場合は Router 側が自動で notify するため、ここで「管理対象」として登録する。
@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
 
 /**
  * shouldRender - slot を描画するか
- * @returns {boolean} 描画する場合 true
+ * @returns 描画する場合 true
  */
 const shouldRender = computed(() => {
     // phase が leave になったら非表示にして leave を発火させる
@@ -86,10 +86,10 @@ const shouldRender = computed(() => {
 
 /**
  * normalizeHandlers - Transition hook を配列に正規化します
- * @param {unknown} handlers - ユーザ指定の hook（関数 or 配列）
- * @returns {Array<(...args: unknown[]) => unknown>} 呼び出し可能な関数配列
+ * @param handlers - ユーザ指定の hook（関数 or 配列）
+ * @returns 呼び出し可能な関数配列
  */
-const normalizeHandlers = (handlers) => {
+const normalizeHandlers = (handlers: unknown): ((...args: unknown[]) => unknown)[] => {
     if (!handlers) {
         return [];
     }
@@ -101,7 +101,7 @@ const normalizeHandlers = (handlers) => {
     }
 
     if (typeof handlers === 'function') {
-        return [handlers];
+        return [handlers as (...args: unknown[]) => unknown];
     }
 
     return [];
@@ -109,11 +109,10 @@ const normalizeHandlers = (handlers) => {
 
 /**
  * runHandlers - hook を順に実行します
- * @param {unknown} handlers - ユーザ指定の hook（関数 or 配列）
- * @param {Array<unknown>} args - Transition hook の引数
- * @returns {void}
+ * @param handlers - ユーザ指定の hook（関数 or 配列）
+ * @param args - Transition hook の引数
  */
-const runHandlers = (handlers, args) => {
+const runHandlers = (handlers: unknown, args: unknown[]): void => {
     const fns = normalizeHandlers(handlers);
 
     for (const fn of fns) {
@@ -123,9 +122,8 @@ const runHandlers = (handlers, args) => {
 
 /**
  * notifyEnterDone - enter/appear 完了通知（内部）
- * @returns {void}
  */
-const notifyEnterDone = () => {
+const notifyEnterDone = (): void => {
     if ($layerge && typeof $layerge._notifyEnterDone === 'function') {
         $layerge._notifyEnterDone(entry.entryId);
     }
@@ -133,16 +131,15 @@ const notifyEnterDone = () => {
 
 /**
  * notifyLeaveDone - leave 完了通知（内部）
- * @returns {void}
  */
-const notifyLeaveDone = () => {
+const notifyLeaveDone = (): void => {
     if ($layerge && typeof $layerge._notifyLeaveDone === 'function') {
         $layerge._notifyLeaveDone(entry.entryId);
     }
 };
 
 const transitionAttrs = computed(() => {
-    const merged = {
+    const merged: Record<string, unknown> = {
         ...attrs
     };
 
@@ -150,19 +147,19 @@ const transitionAttrs = computed(() => {
     const userAfterAppear = merged.onAfterAppear;
     const userAfterLeave = merged.onAfterLeave;
 
-    merged.onAfterEnter = (...args) => {
+    merged.onAfterEnter = (...args: unknown[]) => {
         // after-enter: internal notify -> user hook
         notifyEnterDone();
         runHandlers(userAfterEnter, args);
     };
 
-    merged.onAfterAppear = (...args) => {
+    merged.onAfterAppear = (...args: unknown[]) => {
         // after-appear: internal notify -> user hook
         notifyEnterDone();
         runHandlers(userAfterAppear, args);
     };
 
-    merged.onAfterLeave = (...args) => {
+    merged.onAfterLeave = (...args: unknown[]) => {
         // after-leave: user hook -> internal notify
         try {
             runHandlers(userAfterLeave, args);

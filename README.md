@@ -265,6 +265,17 @@ Returned by `push` / `replace` / `open`.
 
 `PresenterAsyncResult` is `{status: 'completed' | 'aborted' | 'failed' | 'superseded'}`. These four values are the entire public status surface and will not be extended.
 
+When each value is used:
+
+| Status | When |
+|---|---|
+| `completed` | The operation committed. |
+| `superseded` | A newer presenter operation started while this one was still pending, so this one lost (latest wins). |
+| `failed` | The operation threw — for example a navigation guard raised an error. |
+| `aborted` | The operation did not proceed. This includes **a navigation failure reported by the router**, and anything the library treats internally as "nothing happened". |
+
+> Note the last row. A router-reported navigation failure settles as **`aborted`, not `failed`**. If you are branching on the outcome, do not assume that every unsuccessful operation is `failed` — check for the outcome you care about, or treat anything other than `completed` as unsuccessful.
+
 ### `url`
 
 `url` is the successor to `fakePath`. It changes the URL for history integration while Layerge renders whatever `target` you gave it.
