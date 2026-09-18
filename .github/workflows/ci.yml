@@ -41,16 +41,8 @@ jobs:
 
       - run: pnpm test
 
-      # index.d.ts と index.d.cts はバイト単位で同一である前提の運用（ROADMAP B-5）。
-      # 片方だけ編集すると ESM 利用者と CJS 利用者で型が食い違う。
-      # B-1 の段階 7 で手書きの型定義が廃止されるまでの暫定措置。
-      - name: 型定義 2 ファイルの同一性を確認する
-        run: |
-          if ! cmp -s index.d.ts index.d.cts; then
-            echo "::error file=index.d.cts::index.d.ts と index.d.cts が一致しません。両方を同じ内容に揃えてください。"
-            diff -u index.d.ts index.d.cts || true
-            exit 1
-          fi
+      # ROADMAP B-5 の手書き型定義の同一性チェックは、段階 7 で型定義が
+      # ビルド生成に切り替わったため不要になった（生成と複製で同一性が保証される）。
 
       # 公開ビルドが通ること自体も検証対象
       - run: pnpm build

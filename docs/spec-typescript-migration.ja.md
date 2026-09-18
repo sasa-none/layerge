@@ -339,6 +339,11 @@ r.notDefined.push('/a');   // エラーになること
 
 ### 段階 7: 型定義の生成へ切り替え
 
+> **2026-09-18 補足:** 本書のどの段階にも `layerge/index.js` の変換が記載されていませんでした。**記載漏れです。**
+> 型定義の生成にはエントリが `.ts` である必要があり、受け入れ条件 1（`layerge/` 配下に `.js` を残さない）からも必須です。**段階 7 の前提として実施してください**（段階 7 の作業中に補われました）。
+>
+> あわせて、生成されたエントリには**型エクスポートが含まれません。**手書き `index.d.ts` が提供していた公開型 25 件を `index.ts` から明示的に再エクスポートし、手書き版と 1 対 1 に対応させてください。これを怠ると契約が壊れます。
+
 - `vue-tsc --declaration --emitDeclarationOnly` で型定義を生成
 - 生成物を `.d.cts` として複製する手順をビルドに組み込む
 - **手書きの `index.d.ts` / `index.d.cts` を削除**
@@ -499,7 +504,47 @@ const props = defineProps({
 
 > **この種の変化は `typecheck` では検出できません。**段階 5-b と同じ `dist` の比較でのみ見つかります。`.vue` を触る際は必ず比較してください。
 
-### 6-4. `$layerge` ストアの内部メンバーの露出
+### 6-4. `$layerge` ストアの内部メンバーの露出 — **決定済み（2026-09-18）**
+
+段階 7 の実測を受けて確定します。**結論は「`stripInternal` を適用する」**です。
+
+#### これは受け入れ条件 8 の例外ではありません
+
+実装側から「手書き版が公開していた 12 メンバーが消えるため、受け入れ条件 8『公開 API の削除が 1 件も発生していない』に抵触する」という論点が挙がりました。**この整理は誤りです。**根拠は 2 つあります。
+
+1. **手書き `index.d.ts` は、これらを既に `/** @internal */` と宣言しています**（100-116 行の `pending` / `_exitPresenterMode` / `_closeTop` / `_setInvoker` ほか）。`@internal` は「公開契約に含めない」という明示的な宣言です
+2. **README も明言しています。**190 行目に「`router.$layerge` — the internal store (treat as read-only; its `_`-prefixed members are internal)」とあります
+
+つまり、**これらは最初から公開契約ではありませんでした。**`stripInternal` が未適用だったために、公開されるつもりのないものが `.d.ts` に出ていただけです。
+
+**受け入れ条件 8 が守っているのは公開契約であり、`@internal` と宣言済みのメンバーはその外側です。**したがって除去は条件 8 の違反ではなく、**公開される型を、ライブラリ自身が既に宣言していた内容に一致させる是正**です。
+
+> 条件 8 の文言を次のとおり明確化します。**「公開 API」とは `@internal` を付していない公開面を指します。**`@internal` 宣言済みメンバーの除去は、条件 8 の対象外です。
+
+#### `stripInternal` だけでは足りない 3 箇所の扱い
+
+実測で、`stripInternal` 適用後も内部型が漏れる箇所が 3 つ判明しています。個別に決めます。
+
+| 箇所 | 決定 | 理由 |
+|---|---|---|
+| `PresenterEntry.handle: PresenterHandleInternal` | **`PresenterHandle` に変更する** | 手書き `index.d.ts:55` は `handle: PresenterHandle` でした。**生成物のほうが誤りで、手書きが正しい。**`PresenterHandleInternal` は `close` / `closed` ほか公開メンバーを構造的に含むため、代入可能性は保たれます |
+| `PendingPresenterNav.handle: PresenterHandleInternal` | 同上 | 同じ理由。ただし `PendingPresenterNav` 自体が公開面から消えるため（下記）、実質は影響しません |
+| `LayergeStore.pending: PendingPresenterNav \| null` | **`@internal` を付す** | 手書き `index.d.ts:100-101` が `/** @internal */ pending: unknown;` としていたのと整合します |
+
+あわせて次も確定します。
+
+- **`internalNav` に `@internal` を付す。**手書き版には存在しないフィールドであり、除去しても失われる契約はありません
+- **`PendingPresenterNav` と `PresenterHandleInternal` を `index.ts` から再エクスポートしない。**いずれも内部型で、手書き版の公開型 25 件にも含まれていません
+
+#### CHANGELOG に記載してください
+
+TypeScript 利用者のうち、`router.$layerge._closeTop` のように `_` 接頭辞のメンバーへ到達していたコードは、**今後型エラーになります。**意図した変更ですが、利用者から見える変化です。「内部メンバーは元から `@internal` 宣言されており、公開契約ではなかった」旨を添えて記録してください。
+
+---
+
+#### 以下は決定前の記録です
+
+
 
 `LayergeStore` は `_exitPresenterMode` / `_closeTop` などアンダースコア接頭辞の内部メンバーを持ち、現在は `/** @internal */` で注釈されています。
 
@@ -534,7 +579,7 @@ TypeScript 化後、これらを公開型からどう隠すか（`@internal` + `
 5. `consumer-vue-router-4` と `consumer-vue-router-5` の両方で、インストール・ビルド・**型解決**が成功する
 6. 生成された型定義と移行前の `index.d.ts` の差分がすべてレビューされ、各差分が「改善」か「契約変更」かが記録されている。**契約変更は 1 件も存在しないこと**
 7. 公開型に `any` が出現しない
-8. 公開 API の追加・削除・改名が 1 件も発生していない
+8. 公開 API の追加・削除・改名が 1 件も発生していない（**「公開 API」とは `@internal` を付していない公開面を指します。**6-4 の決定を参照）
 9. `strict: true` が達成されている。または、false のまま残したフラグとその理由が本書の 6-1 に記録されている
 
 ---

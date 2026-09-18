@@ -1,0 +1,19 @@
+{
+    // 型定義の生成専用の設定（docs/spec-typescript-migration.ja.md 段階 7）
+    //
+    // 実行時のコードは Vite が生成します。ここでは型定義だけを出力します。
+    // 検査用の tsconfig.json とは noEmit / declaration の扱いだけが異なります。
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        // @internal を付したメンバーを公開型から除去する（移行仕様書 6-4 の決定）。
+        // これらは手書き index.d.ts でも @internal と宣言されており、公開契約の外側。
+        "stripInternal": true,
+        "outDir": "dist/types",
+        "rootDir": "layerge"
+    },
+    "include": ["layerge/**/*.ts", "layerge/**/*.vue"],
+    "exclude": ["node_modules", "dist"]
+}

@@ -1165,9 +1165,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         // ここで invoker を確実に片付ける
         deleteInvokerInternal(pending.id);
 
-        pending.handle._setActive(false);
-        pending.handle._resolveSettled({status: 'superseded'});
-        pending.handle._resolveClosed();
+        (pending.handle as PresenterHandleInternal)._setActive(false);
+        (pending.handle as PresenterHandleInternal)._resolveSettled({status: 'superseded'});
+        (pending.handle as PresenterHandleInternal)._resolveClosed();
 
         if (pending.traceId && pending.traceSettled !== true) {
             try {
@@ -1258,7 +1258,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         entry._leavingDepth = leavingDepth;
 
         // close は冪等：再closeや誤操作を防ぐ
-        entry.handle._setActive(false);
+        (entry.handle as PresenterHandleInternal)._setActive(false);
 
         $layerge.leaving.push(entry);
 
@@ -1445,7 +1445,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                 const idx = $layerge.stack.findIndex((entry) => entry.id === id);
                 const entry = idx >= 0 ? $layerge.stack[idx] : null;
                 if (entry) {
-                    entry.handle._setActive(true);
+                    (entry.handle as PresenterHandleInternal)._setActive(true);
                 }
 
                 const publicOutcome = settleOutcomeInternal({
@@ -1474,7 +1474,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                 const idx = $layerge.stack.findIndex((entry) => entry.id === id);
                 const entry = idx >= 0 ? $layerge.stack[idx] : null;
                 if (entry) {
-                    entry.handle._setActive(true);
+                    (entry.handle as PresenterHandleInternal)._setActive(true);
                 }
 
                 const publicOutcome = settleOutcomeInternal({
@@ -1574,7 +1574,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
 
             if (!gate || gate.ok === false) {
                 // close がキャンセルされた場合は isActive を復元する
-                entry.handle._setActive(true);
+                (entry.handle as PresenterHandleInternal)._setActive(true);
                 return;
             }
         }
@@ -2486,8 +2486,8 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                     $layerge.freezeBackground = false;
                 }
 
-                pending.handle._setActive(false);
-                pending.handle._resolveClosed();
+                (pending.handle as PresenterHandleInternal)._setActive(false);
+                (pending.handle as PresenterHandleInternal)._resolveClosed();
 
                 if (pending.traceId && pending.traceSettled !== true) {
                     try {
@@ -2506,7 +2506,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                         reason: 'routerFailure'
                     });
                     pending.traceSettled = true;
-                    pending.handle._resolveSettled({status: publicStatus.status});
+                    (pending.handle as PresenterHandleInternal)._resolveSettled({
+                        status: publicStatus.status
+                    });
                 }
 
                 return;
@@ -2518,7 +2520,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                 pending.presenterName,
                 pending.kind,
                 actual,
-                pending.handle,
+                pending.handle as PresenterHandleInternal,
                 pending.viewComponent,
                 pending.navType,
                 pending.returnTo
@@ -2709,7 +2711,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         }
 
         // close 完了は leave 完了で resolve
-        entry.handle._resolveClosed();
+        (entry.handle as PresenterHandleInternal)._resolveClosed();
     };
 
     /**

@@ -150,8 +150,13 @@ export interface PresenterEntry {
     route: RouteLocationNormalizedLoaded;
     /** Component/loader target の場合の描画用コンポーネント（RouteLocationRaw の場合は null） */
     viewComponent?: Component | null;
-    /** ハンドル */
-    handle: PresenterHandleInternal;
+    /**
+     * ハンドル
+     *
+     * 実体は PresenterHandleInternal ですが、公開面には内部ハンドルを出しません
+     * （移行仕様書 6-4 の決定）。内部メンバーを読む側でキャストします。
+     */
+    handle: PresenterHandle;
 }
 
 /**
@@ -176,8 +181,8 @@ export interface PendingPresenterNav {
     allowUnmatched: boolean;
     /** Component/loader target の場合の描画用コンポーネント */
     viewComponent: Component | null;
-    /** ハンドル */
-    handle: PresenterHandleInternal;
+    /** ハンドル（実体は PresenterHandleInternal。公開面には出しません） */
+    handle: PresenterHandle;
 }
 
 /**
@@ -214,7 +219,13 @@ export interface LayergeStore {
     leaving: PresenterEntry[];
     /** 背景ルート */
     backgroundRoute: RouteLocationNormalizedLoaded | null;
-    /** afterEach commit待ち */
+    /**
+     * afterEach commit待ち
+     *
+     * 内部型 PendingPresenterNav を参照するため公開面には出しません
+     * （手書き index.d.ts も /** @internal *\/ pending: unknown としていました）。
+     * @internal
+     */
     pending: PendingPresenterNav | null;
     /**
      * 内部用フラグ

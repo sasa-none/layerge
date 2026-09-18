@@ -9,21 +9,19 @@
         "dist",
         "CHANGELOG.md",
         "LICENSE",
-        "index.d.cts",
-        "index.d.ts",
         "README.md"
     ],
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",
-    "types": "./index.d.ts",
+    "types": "./dist/types/index.d.ts",
     "exports": {
         ".": {
             "import": {
-                "types": "./index.d.ts",
+                "types": "./dist/types/index.d.ts",
                 "default": "./dist/index.mjs"
             },
             "require": {
-                "types": "./index.d.cts",
+                "types": "./dist/types/index.d.cts",
                 "default": "./dist/index.cjs"
             }
         },
@@ -71,7 +69,8 @@
         "vue-tsc": "^3.3.11"
     },
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && pnpm build:types",
+        "build:types": "vue-tsc -p tsconfig.build.json && node scripts/emit-cts-types.mjs",
         "prepublishOnly": "npm run build",
         "demo:dev": "pnpm -C demo dev",
         "demo:build": "pnpm -C demo build",
