@@ -28,11 +28,11 @@ test('DecisionTrace on-unexpected logs superseded (latest-wins)', async ({page})
 
     const outcomes = captureOutcomes(page);
 
-    await page.goto('/v3-advanced');
+    await page.goto('/advanced');
 
-    await page.getByTestId('v3-push-async-slow').click();
+    await page.getByTestId('advanced-push-async-slow').click();
     await page.waitForTimeout(50);
-    await page.getByTestId('v3-push-async-fast').click();
+    await page.getByTestId('advanced-push-async-fast').click();
 
     await expect.poll(() => outcomes.some((o) => o.status === 'superseded')).toBeTruthy();
 

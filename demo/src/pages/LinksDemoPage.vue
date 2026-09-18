@@ -1,32 +1,36 @@
 <template>
-    <div class="Root" data-testid="v2-link-demo-page">
-        <h1 class="Title">v2 Link Demo</h1>
+    <div class="Root" data-testid="links-page">
+        <h1 class="Title">Links demo</h1>
+        <p class="Help">
+            What this page shows: how LayergeLink and useLayergeLink open a presenter the same way RouterLink
+            navigates.
+        </p>
 
         <div class="State">
             <div>
                 mode:
-                <code data-testid="v2-mode">{{ mode }}</code>
+                <code data-testid="links-mode">{{ mode }}</code>
             </div>
             <div>
                 depth:
-                <code data-testid="v2-depth">{{ depth }}</code>
+                <code data-testid="links-depth">{{ depth }}</code>
             </div>
             <div>
                 url:
-                <code data-testid="v2-url">{{ currentUrl }}</code>
+                <code data-testid="links-url">{{ currentUrl }}</code>
             </div>
         </div>
 
         <div class="Section">
             <h2 class="SubTitle">LayergeLink</h2>
-            <p class="Help">RouterLink 互換の最小導線（push/replace/open）</p>
+            <p class="Help">RouterLink-compatible entry points (push / replace / open).</p>
 
             <div class="Buttons">
                 <LayergeLink
                     presenter="modal"
                     action="push"
                     :to="{path: '/page-b'}"
-                    data-testid="v2-layerge-link-push"
+                    data-testid="links-layerge-link-push"
                 >
                     modal.push('/page-b')
                 </LayergeLink>
@@ -35,7 +39,7 @@
                     presenter="modal"
                     action="replace"
                     :to="{path: '/page-c'}"
-                    data-testid="v2-layerge-link-replace"
+                    data-testid="links-layerge-link-replace"
                 >
                     modal.replace('/page-c')
                 </LayergeLink>
@@ -44,7 +48,7 @@
                     presenter="modal"
                     action="open"
                     :to="{path: '/page-a'}"
-                    data-testid="v2-layerge-link-open"
+                    data-testid="links-layerge-link-open"
                 >
                     modal.open('/page-a')
                 </LayergeLink>
@@ -53,7 +57,7 @@
                     presenter="modal"
                     :to="{path: '/page-d'}"
                     :prevent="false"
-                    data-testid="v2-layerge-link-prevent-false"
+                    data-testid="links-layerge-link-prevent-false"
                 >
                     prevent=false (meta/ctrl bypass)
                 </LayergeLink>
@@ -62,7 +66,7 @@
                     presenter="modal"
                     :to="{path: '/page-e'}"
                     :disabled="true"
-                    data-testid="v2-layerge-link-disabled"
+                    data-testid="links-layerge-link-disabled"
                 >
                     disabled=true (no-op)
                 </LayergeLink>
@@ -72,7 +76,7 @@
                     action="push"
                     :to="{path: '/page-b'}"
                     :url="{query: {u: '1'}, hash: '#h'}"
-                    data-testid="v2-layerge-link-url"
+                    data-testid="links-layerge-link-url"
                 >
                     modal.push('/page-b', {url:{?u=1#h}})
                 </LayergeLink>
@@ -81,7 +85,7 @@
                     presenter="modal"
                     action="open"
                     :component="InlineOverlay"
-                    data-testid="v2-layerge-link-open-component"
+                    data-testid="links-layerge-link-open-component"
                 >
                     modal.open(Component)
                 </LayergeLink>
@@ -96,7 +100,7 @@
                             <button
                                 type="button"
                                 class="Btn"
-                                data-testid="v2-custom-navigate"
+                                data-testid="links-custom-navigate"
                                 @click="slotProps.navigate"
                             >
                                 custom.navigate()
@@ -105,7 +109,7 @@
                             <button
                                 type="button"
                                 class="Btn"
-                                data-testid="v2-custom-handler-replace"
+                                data-testid="links-custom-handler-replace"
                                 @click="slotProps.handler.replace"
                             >
                                 custom.handler.replace()
@@ -118,13 +122,13 @@
 
         <div class="Section">
             <h2 class="SubTitle">useLayergeLink</h2>
-            <p class="Help">カスタム導線の正解ルート（bindings/handlers + hooks）</p>
+            <p class="Help">The supported way to build a custom entry point (bindings / handlers + hooks).</p>
 
             <div class="Buttons">
                 <button
                     type="button"
                     class="Btn"
-                    data-testid="v2-hooks-open"
+                    data-testid="links-hooks-open"
                     v-bind="linkA.bindings"
                     @click="linkA.handler.push"
                 >
@@ -134,19 +138,19 @@
                 <button
                     type="button"
                     class="Btn"
-                    data-testid="v2-hooks-open-cancel"
+                    data-testid="links-hooks-open-cancel"
                     v-bind="linkCancel.bindings"
                     @click="linkCancel.handler.push"
                 >
                     useLayergeLink.push('/page-a?cancel=1')
                 </button>
 
-                <button type="button" class="Btn" data-testid="v2-hooks-clear" @click="clearLog">
+                <button type="button" class="Btn" data-testid="links-hooks-clear" @click="clearLog">
                     clear log
                 </button>
             </div>
 
-            <div class="Log" data-testid="v2-hooks-log">
+            <div class="Log" data-testid="links-hooks-log">
                 <div v-for="(line, i) in hookLog" :key="i" class="LogLine">{{ line }}</div>
             </div>
         </div>
@@ -154,7 +158,7 @@
         <div class="Section">
             <h2 class="SubTitle">Back</h2>
             <div class="Buttons">
-                <RouterLink class="BtnLink" to="/" data-testid="v2-back-home">Back to Home</RouterLink>
+                <RouterLink class="BtnLink" to="/" data-testid="links-back-home">Back to Home</RouterLink>
             </div>
         </div>
     </div>
@@ -168,7 +172,7 @@ import {LayergeLink, useLayergeLink} from 'layerge';
 
 const router = useRouter();
 
-// Component-mode demo target (v3)
+// Component-mode demo target
 const InlineOverlay = defineComponent({
     name: 'InlineOverlay',
     render() {
@@ -204,7 +208,7 @@ const linkA = useLayergeLink(
     {path: '/page-a'},
     () => {
         return {
-            // basic a11y is opt-in (v2 scope)
+            // basic a11y is opt-in
             role: 'button',
             tabIndex: 0
         };

@@ -46,10 +46,10 @@ test('v4: repeated mixed operations do not crash and return to baseline', async 
         globalThis.__LAYERGE_DECISION_TRACE_LEVEL = 'on-unexpected';
     });
 
-    await page.goto('/v3-advanced');
+    await page.goto('/advanced');
 
-    const state = page.getByTestId('v3-state');
-    const asyncLog = page.getByTestId('v3-async-log');
+    const state = page.getByTestId('advanced-state');
+    const asyncLog = page.getByTestId('advanced-async-log');
     const overlayPresenter = page.getByTestId('overlay-presenter');
     const overlayClose = page.getByTestId('overlay-close');
 
@@ -66,7 +66,7 @@ test('v4: repeated mixed operations do not crash and return to baseline', async 
         if (await overlayClose.count()) {
             await overlayClose.click({timeout: 15_000});
         } else {
-            await page.getByTestId('v3-close-all').click({force: true, timeout: 15_000});
+            await page.getByTestId('advanced-close-all').click({force: true, timeout: 15_000});
         }
         await expectBaseline();
     };
@@ -91,9 +91,9 @@ test('v4: repeated mixed operations do not crash and return to baseline', async 
         for (let i = 0; i < iters; i++) {
             currentIter = i;
             // Trigger a predictable superseded case (slow then fast).
-            await page.getByTestId('v3-push-async-slow').click();
+            await page.getByTestId('advanced-push-async-slow').click();
             await page.waitForTimeout(30);
-            await page.getByTestId('v3-push-async-fast').click();
+            await page.getByTestId('advanced-push-async-fast').click();
 
             await expect(asyncLog).toContainText('pushAsync(fast): start');
             await expect(asyncLog).toContainText('pushAsync(fast): completed');
@@ -103,11 +103,11 @@ test('v4: repeated mixed operations do not crash and return to baseline', async 
 
             // Periodically test "blocked" path via controlledHooks.
             if (i % 5 === 0) {
-                await page.getByTestId('v3-cancel-open').check();
-                await page.getByTestId('v3-open').click();
+                await page.getByTestId('advanced-cancel-open').check();
+                await page.getByTestId('advanced-open').click();
                 await page.waitForTimeout(50);
                 await expectBaseline();
-                await page.getByTestId('v3-cancel-open').uncheck();
+                await page.getByTestId('advanced-cancel-open').uncheck();
             }
         }
     } catch (err) {

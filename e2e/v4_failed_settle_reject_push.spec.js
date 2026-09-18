@@ -24,17 +24,17 @@ test('v4: router.push reject is settled as failed (no pageerror)', async ({page}
     });
 
     // When the current route has ?__fail=reject_push, demo router rejects push/replace.
-    await page.goto('/v3-advanced?__fail=reject_push');
+    await page.goto('/advanced?__fail=reject_push');
 
     // Trigger a navigation (push via url) which should reject.
-    await page.getByTestId('v3-push').click();
+    await page.getByTestId('advanced-push').click();
 
     await expect.poll(() => oneLineOutcomes.some((l) => /status=failed\b/.test(l.text))).toBeTruthy();
 
     // ROADMAP A-11: ログ行だけでなく、settled の解決値そのものを検証する。
     // 以前はここが {status: {traceId, status}} になっており、
     // ログ行しか見ていなかったため検出できていなかった。
-    await expect(page.getByTestId('v3-settled')).toHaveText('settled: failed');
+    await expect(page.getByTestId('advanced-settled')).toHaveText('settled: failed');
 
     const failedLine = oneLineOutcomes.find((l) => /status=failed\b/.test(l.text));
     expect(failedLine).toBeTruthy();

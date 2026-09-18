@@ -7,9 +7,9 @@ test('modal.push(loader, {url}) updates URL, shows overlay after loader resolves
 
     await page.getByTestId('modal-url-loader').click();
 
-    await expect(page).toHaveURL(/\/fake\/help-async$/);
+    await expect(page).toHaveURL(/\/no-route\/help-async$/);
     await expect(page.getByTestId('url-overlay-content')).toBeVisible();
-    await expect(page.getByTestId('current-url')).toHaveText('/fake/help-async');
+    await expect(page.getByTestId('current-url')).toHaveText('/no-route/help-async');
 
     await page.goBack();
 

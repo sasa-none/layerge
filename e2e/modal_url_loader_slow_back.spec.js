@@ -7,7 +7,7 @@ test('slow url loader can be cancelled by browser back (should not resurrect lat
 
     await page.getByTestId('modal-url-loader-slow').click();
 
-    await expect(page).toHaveURL(/\/fake\/help-slow$/);
+    await expect(page).toHaveURL(/\/no-route\/help-slow$/);
 
     // Immediately go back.
     await page.goBack();

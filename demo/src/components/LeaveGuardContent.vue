@@ -1,6 +1,6 @@
 <template>
-    <div class="Wrap" data-testid="v3-leave-guard-content">
-        <h3 class="Title">V3 Leave Guard Content</h3>
+    <div class="Wrap" data-testid="advanced-leave-guard-content">
+        <h3 class="Title">Leave Guard Content</h3>
 
         <div class="Help">
             <div>
@@ -27,12 +27,12 @@
         </div>
 
         <label class="Row">
-            <input type="checkbox" v-model="dirty" data-testid="v3-dirty" />
+            <input type="checkbox" v-model="dirty" data-testid="advanced-dirty" />
             dirty (block leaving until confirmed)
         </label>
 
         <label class="Row">
-            <input type="checkbox" v-model="pending" data-testid="v3-pending" />
+            <input type="checkbox" v-model="pending" data-testid="advanced-pending" />
             pending (wait commit() before closing)
         </label>
 
@@ -44,25 +44,25 @@
                 min="0"
                 step="50"
                 v-model.number="commitDelayMs"
-                data-testid="v3-commit-delay"
+                data-testid="advanced-commit-delay"
             />
         </label>
 
         <label class="Row">
-            <input type="checkbox" v-model="useConfirm" data-testid="v3-use-confirm" />
+            <input type="checkbox" v-model="useConfirm" data-testid="advanced-use-confirm" />
             use window.confirm (recommended)
         </label>
 
         <div class="Buttons">
-            <button type="button" class="Btn" data-testid="v3-close-self" @click="closeSelf">
+            <button type="button" class="Btn" data-testid="advanced-close-self" @click="closeSelf">
                 closeTop()
             </button>
-            <button type="button" class="Btn" data-testid="v3-close-async-self" @click="closeAsyncSelf">
+            <button type="button" class="Btn" data-testid="advanced-close-async-self" @click="closeAsyncSelf">
                 closeAsync(lastEntryId)
             </button>
         </div>
 
-        <div class="Log" data-testid="v3-leave-guard-log">{{ log }}</div>
+        <div class="Log" data-testid="advanced-leave-guard-log">{{ log }}</div>
     </div>
 </template>
 

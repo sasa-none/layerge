@@ -51,10 +51,10 @@ test('v4: repeated closeAsync(lastEntryId) mixed outcomes do not crash and alway
         globalThis.__LAYERGE_DECISION_TRACE_LEVEL = 'on-unexpected';
     });
 
-    await page.goto('/v3-advanced');
+    await page.goto('/advanced');
 
-    const state = page.getByTestId('v3-state');
-    const content = page.getByTestId('v3-leave-guard-content');
+    const state = page.getByTestId('advanced-state');
+    const content = page.getByTestId('advanced-leave-guard-content');
 
     const expectBaseline = async () => {
         // The demo's "lastEntryId" is not guaranteed to reset to "-" even after the presenter fully closes.
@@ -88,7 +88,7 @@ test('v4: repeated closeAsync(lastEntryId) mixed outcomes do not crash and alway
             currentIter = i;
 
             // Open presenter.
-            await page.getByTestId('v3-open').click();
+            await page.getByTestId('advanced-open').click();
             await expect(content).toBeVisible({timeout: 15_000});
 
             // Wait until lastEntryId is captured.
@@ -101,29 +101,29 @@ test('v4: repeated closeAsync(lastEntryId) mixed outcomes do not crash and alway
             // The demo uses window.confirm when dirty=true.
             if (shouldAbort) {
                 // Ensure dirty=true (default). If it was changed by prior iteration, re-check it.
-                await page.getByTestId('v3-dirty').check();
+                await page.getByTestId('advanced-dirty').check();
 
                 // Dismiss confirm => aborted.
                 page.once('dialog', async (dialog) => {
                     await dialog.dismiss();
                 });
 
-                await page.getByTestId('v3-close-async-self').click();
-                await expect(page.getByTestId('v3-async-log')).toContainText('closeAsync: aborted', {timeout: 15_000});
+                await page.getByTestId('advanced-close-async-self').click();
+                await expect(page.getByTestId('advanced-async-log')).toContainText('closeAsync: aborted', {timeout: 15_000});
 
                 // Close it for real to return to baseline.
-                await page.getByTestId('v3-dirty').uncheck();
-                await page.getByTestId('v3-close-self').click();
+                await page.getByTestId('advanced-dirty').uncheck();
+                await page.getByTestId('advanced-close-self').click();
                 await expectBaseline();
                 continue;
             }
 
             // Completed path: avoid confirmation by setting dirty=false.
-            await page.getByTestId('v3-dirty').uncheck();
+            await page.getByTestId('advanced-dirty').uncheck();
 
-            await page.getByTestId('v3-close-async-self').click();
+            await page.getByTestId('advanced-close-async-self').click();
 
-            await expect(page.getByTestId('v3-async-log')).toContainText('closeAsync: completed', {timeout: 15_000});
+            await expect(page.getByTestId('advanced-async-log')).toContainText('closeAsync: completed', {timeout: 15_000});
             await expectBaseline();
         }
     } catch (err) {

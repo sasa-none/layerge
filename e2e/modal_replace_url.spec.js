@@ -11,7 +11,7 @@ test('modal.replace(Component, {url}) updates URL and back returns to previous p
     // Replace current entry with url + component overlay.
     await page.getByTestId('modal-replace-url').click();
 
-    await expect(page).toHaveURL(/\/fake\/replace$/);
+    await expect(page).toHaveURL(/\/no-route\/replace$/);
     await expect(page.getByTestId('modal-open-content-title')).toBeVisible();
 
     // Back should return to '/' because replace() replaced the /page-a entry.

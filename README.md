@@ -900,10 +900,10 @@ Close order:
 #### 3) `replace(..., {url})` back behavior (Home → Page A)
 
 1. From Home, click `router.push('/page-a')` (`data-testid="nav-to-page-a"`)
-2. On Page A, click `modal.replace(Component, { url: '/fake/replace' })` (`data-testid="modal-replace-url"`)
+2. On Page A, click `modal.replace(Component, { url: '/no-route/replace' })` (`data-testid="modal-replace-url"`)
 
 - Expected:
-  - URL becomes `/fake/replace`
+  - URL becomes `/no-route/replace`
   - Overlay shows **Modal Open Content**
   - Browser back returns to `/` (NOT `/page-a`) because `replace()` overwrote the `/page-a` history entry.
 

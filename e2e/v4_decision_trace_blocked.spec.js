@@ -39,13 +39,13 @@ test('DecisionTrace on-unexpected logs blocked (controlledHooks cancellation)', 
 
     const {outcomes, traces} = captureLayergeLogs(page);
 
-    await page.goto('/v3-advanced');
+    await page.goto('/advanced');
 
     // Enable cancellation for beforeNavigate (controlledHooks)
-    await page.getByTestId('v3-cancel-navigate').check();
+    await page.getByTestId('advanced-cancel-navigate').check();
 
     // Trigger navigate (push) -> should be blocked by controlledHooks
-    await page.getByTestId('v3-push').click();
+    await page.getByTestId('advanced-push').click();
 
     await expect.poll(() => outcomes.some((o) => o.status === 'blocked')).toBeTruthy();
 
@@ -74,12 +74,12 @@ test('DecisionTrace off does not emit outcome logs', async ({page}) => {
 
     const {outcomes} = captureLayergeLogs(page);
 
-    await page.goto('/v3-advanced');
+    await page.goto('/advanced');
 
     // Produce an "unexpected" outcome (superseded) that would log if on-unexpected/verbose
-    await page.getByTestId('v3-push-async-slow').click();
+    await page.getByTestId('advanced-push-async-slow').click();
     await page.waitForTimeout(50);
-    await page.getByTestId('v3-push-async-fast').click();
+    await page.getByTestId('advanced-push-async-fast').click();
 
     // Wait enough for async settle
     await page.waitForTimeout(1200);

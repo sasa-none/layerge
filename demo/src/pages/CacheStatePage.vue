@@ -8,6 +8,7 @@
             </p>
 
             <div class="Block">
+                <h2 class="BlockTitle">Kept state</h2>
                 <div>
                     mount id:
                     <code data-testid="cache-mount-id">{{ mountId }}</code>
@@ -20,6 +21,7 @@
             </div>
 
             <div class="Block">
+                <h2 class="BlockTitle">Text input</h2>
                 <label class="Label" for="cache-input">text:</label>
                 <input id="cache-input" v-model="text" class="Input" data-testid="cache-input" />
                 <div>
@@ -29,7 +31,7 @@
             </div>
 
             <div class="Block">
-                <div class="HelpTitle">Navigation</div>
+                <h2 class="BlockTitle">Navigation</h2>
                 <button type="button" class="Btn" data-testid="cache-push-page-a" @click="pushPageA">
                     stackCard.push('/page-a')
                 </button>
@@ -85,6 +87,11 @@ const cacheContext = computed(() => (presenter?.handle ? 'stackcard' : 'page'));
     margin: 0;
     font-size: 12px;
     color: #444;
+}
+
+.BlockTitle {
+    margin: 0;
+    font-size: 14px;
 }
 
 .Block {

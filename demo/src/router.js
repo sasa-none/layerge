@@ -5,12 +5,12 @@ import HomePage from './pages/HomePage.vue';
 import DemoPage from './pages/DemoPage.vue';
 import PageA from './pages/PageA.vue';
 import NotFoundPage from './pages/NotFoundPage.vue';
-import BridgeModalFakeHelpPage from './pages/BridgeModalFakeHelpPage.vue';
+import BridgeUrlOverlayPage from './pages/BridgeUrlOverlayPage.vue';
 import BridgeModalCacheDemoPage from './pages/BridgeModalCacheDemoPage.vue';
 import CacheStatePage from './pages/CacheStatePage.vue';
 import TransitionDemoPage from './pages/TransitionDemoPage.vue';
-import V2LinkDemoPage from './pages/V2LinkDemoPage.vue';
-import V3AdvancedDemoPage from './pages/V3AdvancedDemoPage.vue';
+import LinksDemoPage from './pages/LinksDemoPage.vue';
+import AdvancedDemoPage from './pages/AdvancedDemoPage.vue';
 
 import {initNavLog} from './navLog';
 
@@ -30,7 +30,7 @@ const createDemoRouter = () => {
         routes: [
             {path: '/', component: HomePage},
             // bridge routes (deep link entry points)
-            {path: '/modal/fake-help', component: BridgeModalFakeHelpPage},
+            {path: '/modal/url-overlay', component: BridgeUrlOverlayPage},
             {path: '/modal/cache-demo', component: BridgeModalCacheDemoPage},
 
             {path: '/page-a', component: PageA},
@@ -41,8 +41,8 @@ const createDemoRouter = () => {
 
             {path: '/cache-state', component: CacheStatePage},
             {path: '/transition', component: TransitionDemoPage},
-            {path: '/v2-link', component: V2LinkDemoPage},
-            {path: '/v3-advanced', component: V3AdvancedDemoPage},
+            {path: '/links', component: LinksDemoPage},
+            {path: '/advanced', component: AdvancedDemoPage},
             // catch-all (demo)
             {path: '/:pathMatch(.*)*', component: NotFoundPage}
         ]
@@ -146,7 +146,7 @@ const createDemoRouter = () => {
         });
     });
 
-    // demo only: global flags to toggle v3 behaviors in /v3-advanced
+    // demo only: global flags to toggle controlledHooks behaviors in /advanced
 
     window.__layergeDemoFlags = window.__layergeDemoFlags || {
         cancelClose: false,

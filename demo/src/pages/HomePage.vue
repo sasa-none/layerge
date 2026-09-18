@@ -27,18 +27,53 @@
         </div>
 
         <div class="Section">
+            <h2 class="SubTitle">Demo pages</h2>
+            <p class="Help">Each page below demonstrates one part of Layerge.</p>
+            <ul class="Toc">
+                <li class="TocItem">
+                    <RouterLink to="/links" data-testid="toc-links">/links</RouterLink>
+                    — LayergeLink and useLayergeLink: RouterLink-compatible ways to open a presenter.
+                </li>
+                <li class="TocItem">
+                    <RouterLink to="/advanced" data-testid="toc-advanced">/advanced</RouterLink>
+                    — controlledHooks and usePresenterLeaveGuard: cancelling and guarding operations.
+                </li>
+                <li class="TocItem">
+                    <RouterLink to="/transition" data-testid="toc-transition">/transition</RouterLink>
+                    — headless LayergeView, EntryContext, leaving retention and LayergeTransition.
+                </li>
+                <li class="TocItem">
+                    <RouterLink to="/cache-state" data-testid="toc-cache-state">/cache-state</RouterLink>
+                    — StackCard cache: component state is kept while another page is pushed on top.
+                </li>
+                <li class="TocItem">
+                    <RouterLink to="/modal/url-overlay" data-testid="toc-url-overlay">
+                        /modal/url-overlay
+                    </RouterLink>
+                    — bridge route: a deep link that re-opens an overlay and lands on Home when closed.
+                </li>
+                <li class="TocItem">
+                    <RouterLink to="/modal/cache-demo" data-testid="toc-cache-demo">
+                        /modal/cache-demo
+                    </RouterLink>
+                    — bridge route: a deep link that opens StackCard on a stateful page.
+                </li>
+            </ul>
+        </div>
+
+        <div class="Section">
             <h2 class="SubTitle">Navigate (page mode)</h2>
             <div class="Buttons">
                 <button type="button" class="Btn" data-testid="nav-to-page-a" @click="navToPageA">
                     router.push('/page-a')
                 </button>
 
-                <RouterLink class="BtnLink" to="/v2-link" data-testid="nav-to-v2-link">
-                    v2 link demo
+                <RouterLink class="BtnLink" to="/links" data-testid="nav-to-links">
+                    links demo (LayergeLink / useLayergeLink)
                 </RouterLink>
 
-                <RouterLink class="BtnLink" to="/v3-advanced" data-testid="nav-to-v3-advanced">
-                    v3 advanced demo (controlledHooks / leaveGuard)
+                <RouterLink class="BtnLink" to="/advanced" data-testid="nav-to-advanced">
+                    advanced demo (controlledHooks / leaveGuard)
                 </RouterLink>
             </div>
         </div>
@@ -77,7 +112,7 @@
                     data-testid="modal-replace-component"
                     @click="replaceModalComponent"
                 >
-                    modal.replace(Component, {url:'/fake/replace'})
+                    modal.replace(Component, {url:'/no-route/replace'})
                 </button>
                 <button
                     type="button"
@@ -140,7 +175,7 @@
             <p class="Help">
                 In this demo router, you can add
                 <code>?delay=1200</code>
-                to simulate a slow guard. Layerge v1.1 should keep the latest operation consistent.
+                to simulate a slow guard. Layerge should keep the latest operation consistent.
             </p>
             <div class="Buttons">
                 <button type="button" class="Btn" data-testid="modal-race-ab" @click="raceAThenB">
@@ -239,8 +274,8 @@
                 presenter on mount.
             </p>
             <div class="Routes">
-                <RouterLink to="/modal/fake-help" data-testid="route-bridge-fake-help">
-                    /modal/fake-help
+                <RouterLink to="/modal/url-overlay" data-testid="route-bridge-url-overlay">
+                    /modal/url-overlay
                 </RouterLink>
                 <RouterLink to="/modal/cache-demo" data-testid="route-bridge-cache-demo">
                     /modal/cache-demo
@@ -265,9 +300,9 @@
                 <button type="button" class="Btn" @click="goBack">back</button>
             </div>
             <p class="Help">
-                naive: 連続pushは v1.1 の「最新が勝つ」仕様により、最後の1回だけが確定します。
+                naive: rapid pushes are latest-wins, so only the last one commits.
                 <br />
-                sequential: 1回ずつ確定を待ってから次をpushするため、深さが増えていきます。
+                sequential: waiting for each push to commit before the next one grows the stack.
             </p>
         </div>
 
@@ -293,7 +328,7 @@
                 <RouterLink to="/page-e">/page-e</RouterLink>
                 <RouterLink to="/cache-state">/cache-state</RouterLink>
                 <RouterLink to="/transition">/transition (transition demo)</RouterLink>
-                <RouterLink to="/fake/help">/fake/help (direct)</RouterLink>
+                <RouterLink to="/no-route/help">/no-route/help (direct)</RouterLink>
             </div>
         </div>
     </div>
@@ -409,9 +444,9 @@ const openMixedStack = () => {
 };
 
 const replaceModalComponent = () => {
-    setAction("modal.replace(Component, {url:'/fake/replace'})");
-    trackTo("modal.replace(Component, {url:'/fake/replace'})", '/fake/replace');
-    router.modal.replace(ModalOpenContent, {url: '/fake/replace'});
+    setAction("modal.replace(Component, {url:'/no-route/replace'})");
+    trackTo("modal.replace(Component, {url:'/no-route/replace'})", '/no-route/replace');
+    router.modal.replace(ModalOpenContent, {url: '/no-route/replace'});
 };
 
 const openModalMismatch = () => {
@@ -433,25 +468,25 @@ const navToPageA = () => {
 };
 
 const openUrlComponent = () => {
-    setAction("modal.push(Component, {url:'/fake/help'})");
-    trackTo("modal.push(Component, {url:'/fake/help'})", '/fake/help');
-    router.modal.push(UrlOverlayContent, {url: '/fake/help'});
+    setAction("modal.push(Component, {url:'/no-route/help'})");
+    trackTo("modal.push(Component, {url:'/no-route/help'})", '/no-route/help');
+    router.modal.push(UrlOverlayContent, {url: '/no-route/help'});
 };
 
 const openUrlLoader = () => {
-    setAction("modal.push(loader, {url:'/fake/help-async'})");
-    trackTo("modal.push(loader, {url:'/fake/help-async'})", '/fake/help-async');
+    setAction("modal.push(loader, {url:'/no-route/help-async'})");
+    trackTo("modal.push(loader, {url:'/no-route/help-async'})", '/no-route/help-async');
 
     const loader = () => {
         return import('../presenters/UrlOverlayContent.vue');
     };
 
-    router.modal.push(loader, {url: '/fake/help-async'});
+    router.modal.push(loader, {url: '/no-route/help-async'});
 };
 
 const openUrlLoaderSlow = () => {
-    setAction("modal.push(slowLoader, {url:'/fake/help-slow'})");
-    trackTo("modal.push(slowLoader, {url:'/fake/help-slow'})", '/fake/help-slow');
+    setAction("modal.push(slowLoader, {url:'/no-route/help-slow'})");
+    trackTo("modal.push(slowLoader, {url:'/no-route/help-slow'})", '/no-route/help-slow');
 
     const slowLoader = () => {
         return new Promise((resolve) => {
@@ -461,12 +496,12 @@ const openUrlLoaderSlow = () => {
         });
     };
 
-    router.modal.push(slowLoader, {url: '/fake/help-slow'});
+    router.modal.push(slowLoader, {url: '/no-route/help-slow'});
 };
 
 const openUrlLoaderFail = () => {
-    setAction("modal.push(failingLoader, {url:'/fake/help-fail'})");
-    trackTo("modal.push(failingLoader, {url:'/fake/help-fail'})", '/fake/help-fail');
+    setAction("modal.push(failingLoader, {url:'/no-route/help-fail'})");
+    trackTo("modal.push(failingLoader, {url:'/no-route/help-fail'})", '/no-route/help-fail');
 
     const failingLoader = () => {
         return new Promise((_resolve, reject) => {
@@ -476,7 +511,7 @@ const openUrlLoaderFail = () => {
         });
     };
 
-    router.modal.push(failingLoader, {url: '/fake/help-fail'});
+    router.modal.push(failingLoader, {url: '/no-route/help-fail'});
 };
 
 const openUrlQueryHash = () => {
@@ -644,8 +679,8 @@ const closeTopVsSlowLoader = () => {
         });
     };
 
-    trackTo("modal.push(slowLoader, {url:'/fake/help-slow-close'})", '/fake/help-slow-close');
-    router.modal.push(slowLoader, {url: '/fake/help-slow-close'});
+    trackTo("modal.push(slowLoader, {url:'/no-route/help-slow-close'})", '/no-route/help-slow-close');
+    router.modal.push(slowLoader, {url: '/no-route/help-slow-close'});
 
     // Close quickly while loader is still pending.
     window.setTimeout(() => {
@@ -800,6 +835,19 @@ const exit = () => {
 .Routes a {
     text-decoration: none;
     border-bottom: 1px solid #888;
+}
+
+.Toc {
+    display: grid;
+    gap: 6px;
+    padding-left: 18px;
+    margin: 0;
+    font-size: 12px;
+    color: #444;
+}
+
+.TocItem {
+    line-height: 1.5;
 }
 
 .Help {

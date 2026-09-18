@@ -7,7 +7,7 @@ test('modal.replace(Component, {url}) overlay-close restores returnTo (home)', a
 
     await page.getByTestId('modal-replace-component').click();
 
-    await expect(page).toHaveURL(/\/fake\/replace$/);
+    await expect(page).toHaveURL(/\/no-route\/replace$/);
     await expect(page.getByTestId('modal-open-content-title')).toBeVisible();
 
     await page.getByTestId('overlay-close').click();

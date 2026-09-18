@@ -5,10 +5,10 @@ test('modal.push(Component, {url}) restores presenter on forward', async ({page}
 
     await expect(page.getByTestId('home-url')).toHaveText('/');
 
-    // push presenter (URL will move to /fake/help)
+    // push presenter (URL will move to /no-route/help)
     await page.getByTestId('modal-url').click();
 
-    await expect(page).toHaveURL(/\/fake\/help$/);
+    await expect(page).toHaveURL(/\/no-route\/help$/);
     await expect(page.getByTestId('url-overlay-content')).toBeVisible();
     await expect(page.getByTestId('overlay-presenter')).toBeVisible();
 
@@ -24,7 +24,7 @@ test('modal.push(Component, {url}) restores presenter on forward', async ({page}
     // Forward should restore the presenter (presenter mode, not page mode)
     await page.goForward();
 
-    await expect(page).toHaveURL(/\/fake\/help$/);
+    await expect(page).toHaveURL(/\/no-route\/help$/);
     await expect(page.getByTestId('url-overlay-content')).toBeVisible();
     await expect(page.getByTestId('overlay-presenter')).toBeVisible();
 

@@ -1,15 +1,13 @@
 <template>
-    <div class="Page" data-testid="v3-advanced">
-        <h1 class="Title">v3 advanced demo</h1>
+    <div class="Page" data-testid="advanced-page">
+        <h1 class="Title">Advanced demo</h1>
 
         <p class="Desc">
-            This page exists for
-            <b>manual verification</b>
-            of v3-only behaviors:
+            What this page shows: how
             <b>controlledHooks</b>
-            and
+            cancels an operation, and how
             <b>usePresenterLeaveGuard</b>
-            .
+            blocks closing until the content allows it.
         </p>
 
         <div class="Section">
@@ -21,39 +19,43 @@
             </p>
 
             <label class="Row">
-                <input type="checkbox" v-model="flags.cancelOpen" data-testid="v3-cancel-open" />
+                <input type="checkbox" v-model="flags.cancelOpen" data-testid="advanced-cancel-open" />
                 cancelOpen (beforeOpen)
             </label>
             <label class="Row">
-                <input type="checkbox" v-model="flags.cancelNavigate" data-testid="v3-cancel-navigate" />
+                <input
+                    type="checkbox"
+                    v-model="flags.cancelNavigate"
+                    data-testid="advanced-cancel-navigate"
+                />
                 cancelNavigate (beforeNavigate)
             </label>
             <label class="Row">
-                <input type="checkbox" v-model="flags.cancelClose" data-testid="v3-cancel-close" />
+                <input type="checkbox" v-model="flags.cancelClose" data-testid="advanced-cancel-close" />
                 cancelClose (beforeClose)
             </label>
 
             <div class="Buttons">
-                <button type="button" class="Btn" data-testid="v3-open" @click="openComponent">
+                <button type="button" class="Btn" data-testid="advanced-open" @click="openComponent">
                     modal.open(component)
                 </button>
-                <button type="button" class="Btn" data-testid="v3-push" @click="pushWithUrl">
-                    modal.push(component, { url: '/modal/v3-guard' })
+                <button type="button" class="Btn" data-testid="advanced-push" @click="pushWithUrl">
+                    modal.push(component, { url: '/modal/leave-guard' })
                 </button>
-                <button type="button" class="Btn" data-testid="v3-close-top" @click="closeTop">
+                <button type="button" class="Btn" data-testid="advanced-close-top" @click="closeTop">
                     closeTop()
                 </button>
-                <button type="button" class="Btn" data-testid="v3-close-async" @click="closeAsyncLast">
+                <button type="button" class="Btn" data-testid="advanced-close-async" @click="closeAsyncLast">
                     closeAsync(lastEntryId)
                 </button>
-                <button type="button" class="Btn" data-testid="v3-close-all" @click="closeAll">
+                <button type="button" class="Btn" data-testid="advanced-close-all" @click="closeAll">
                     closeAll()
                 </button>
             </div>
 
-            <div class="Log" data-testid="v3-settled">settled: {{ lastSettled || '-' }}</div>
+            <div class="Log" data-testid="advanced-settled">settled: {{ lastSettled || '-' }}</div>
 
-            <div class="Log" data-testid="v3-state">
+            <div class="Log" data-testid="advanced-state">
                 state: {{ state.mode }} / depth={{ state.depth }} | url={{ url }} | lastEntryId={{
                     lastEntryId || '-'
                 }}
@@ -99,15 +101,25 @@
             </p>
 
             <div class="Buttons">
-                <button type="button" class="Btn" data-testid="v3-push-async-slow" @click="pushAsyncSlow">
+                <button
+                    type="button"
+                    class="Btn"
+                    data-testid="advanced-push-async-slow"
+                    @click="pushAsyncSlow"
+                >
                     pushAsync(slow)
                 </button>
-                <button type="button" class="Btn" data-testid="v3-push-async-fast" @click="pushAsyncFast">
+                <button
+                    type="button"
+                    class="Btn"
+                    data-testid="advanced-push-async-fast"
+                    @click="pushAsyncFast"
+                >
                     pushAsync(fast)
                 </button>
             </div>
 
-            <div class="Log" data-testid="v3-async-log">{{ asyncLog }}</div>
+            <div class="Log" data-testid="advanced-async-log">{{ asyncLog }}</div>
         </div>
 
         <div class="Section">
@@ -120,7 +132,7 @@
 import {computed, nextTick, reactive, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {useLayerge} from 'layerge';
-import V3LeaveGuardContent from '../components/V3LeaveGuardContent.vue';
+import LeaveGuardContent from '../components/LeaveGuardContent.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -134,7 +146,7 @@ window.__layergeDemoFlags = flags;
 
 const openComponent = () => {
     // PresenterHandle does not expose entryId; get it from the store stack instead.
-    router.modal.open(V3LeaveGuardContent);
+    router.modal.open(LeaveGuardContent);
 
     void nextTick(() => {
         const top = router.$layerge?.stack?.[router.$layerge.stack.length - 1];
@@ -144,17 +156,22 @@ const openComponent = () => {
 
 const pushWithUrl = () => {
     lastSettled.value = '';
+    lastEntryId.value = '';
 
-    const handle = router.modal.push(V3LeaveGuardContent, {url: '/modal/v3-guard'});
+    const handle = router.modal.push(LeaveGuardContent, {url: '/modal/leave-guard'});
 
     void handle.settled.then((result) => {
         // settled は {status: <4 値の文字列>} で解決する契約。
         // 文字列以外が来た場合は invalid: として可視化する（契約違反の検出用）
         lastSettled.value =
             typeof result.status === 'string' ? result.status : `invalid:${JSON.stringify(result.status)}`;
-    });
 
-    void nextTick(() => {
+        // push+url は URL 遷移を伴うため、nextTick の時点ではまだエントリが積まれていない
+        // （open は同期なので nextTick で取れる）。確定を待ってからスタック最上位を読む。
+        if (result.status !== 'completed') {
+            return;
+        }
+
         const top = router.$layerge?.stack?.[router.$layerge.stack.length - 1];
         lastEntryId.value = top?.id ?? '';
     });

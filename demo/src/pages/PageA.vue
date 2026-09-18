@@ -9,7 +9,7 @@
                 .
             </p>
             <button type="button" class="Btn" data-testid="modal-replace-url" @click="replaceWithUrl">
-                modal.replace(Component, {url:'/fake/replace'})
+                modal.replace(Component, {url:'/no-route/replace'})
             </button>
         </div>
     </PageShell>
@@ -24,10 +24,10 @@ import PageShell from './_PageShell.vue';
 const router = useRouter();
 
 const replaceWithUrl = () => {
-    lastAction.value = "modal.replace(Component, {url:'/fake/replace'})";
+    lastAction.value = "modal.replace(Component, {url:'/no-route/replace'})";
     lastResult.value = '';
-    trackNavigation(lastAction.value, '/fake/replace');
-    router.modal.replace(ModalOpenContent, {url: '/fake/replace'});
+    trackNavigation(lastAction.value, '/no-route/replace');
+    router.modal.replace(ModalOpenContent, {url: '/no-route/replace'});
 };
 </script>
 

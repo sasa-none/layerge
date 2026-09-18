@@ -10,7 +10,7 @@ test('replace-close restores URL to from.fullPath', async ({page}) => {
 
     // Replace current entry with url + component overlay.
     await page.getByTestId('modal-replace-url').click();
-    await expect(page).toHaveURL(/\/fake\/replace$/);
+    await expect(page).toHaveURL(/\/no-route\/replace$/);
     await expect(page.getByTestId('modal-open-content-title')).toBeVisible();
 
     // Close via overlay (×). URL should restore to from.fullPath (/page-a).

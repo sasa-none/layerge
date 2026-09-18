@@ -7,9 +7,9 @@ test('modal.push(Component, {url}) updates URL, shows overlay, and back returns'
 
     await page.getByTestId('modal-url').click();
 
-    await expect(page).toHaveURL(/\/fake\/help$/);
+    await expect(page).toHaveURL(/\/no-route\/help$/);
     await expect(page.getByTestId('url-overlay-content')).toBeVisible();
-    await expect(page.getByTestId('current-url')).toHaveText('/fake/help');
+    await expect(page.getByTestId('current-url')).toHaveText('/no-route/help');
 
     await page.goBack();
 

@@ -7,7 +7,7 @@ test('modal.push(failingLoader, {url}) shows error UI and back returns', async (
 
     await page.getByTestId('modal-url-loader-fail').click();
 
-    await expect(page).toHaveURL(/\/fake\/help-fail$/);
+    await expect(page).toHaveURL(/\/no-route\/help-fail$/);
 
     // While pending, show the loading UI.
     await expect(page.getByTestId('presenter-loading')).toBeVisible();

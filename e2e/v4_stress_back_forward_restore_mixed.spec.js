@@ -86,10 +86,10 @@ test('v4: repeated back/forward restore cycles do not crash and restore the same
         for (let i = 0; i < iters; i++) {
             currentIter = i;
 
-            // Open the url presenter (URL will move to /fake/help)
+            // Open the url presenter (URL will move to /no-route/help)
             await page.getByTestId('modal-url').click();
 
-            await expect(page).toHaveURL(/\/fake\/help$/);
+            await expect(page).toHaveURL(/\/no-route\/help$/);
             await expect(urlContent).toBeVisible({timeout: 15_000});
             await expect(overlay).toBeVisible({timeout: 15_000});
 
@@ -101,7 +101,7 @@ test('v4: repeated back/forward restore cycles do not crash and restore the same
 
             // Forward restores presenter.
             await page.goForward();
-            await expect(page).toHaveURL(/\/fake\/help$/);
+            await expect(page).toHaveURL(/\/no-route\/help$/);
             await expect(urlContent).toBeVisible({timeout: 15_000});
             await expect(overlay).toBeVisible({timeout: 15_000});
 

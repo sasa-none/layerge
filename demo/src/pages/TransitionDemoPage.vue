@@ -2,7 +2,7 @@
     <PageShell title="Transition / EntryContext Demo">
         <div class="Root" data-testid="transition-demo-page">
             <p class="Help">
-                This page focuses on v1.x changes:
+                What this page shows:
                 <strong>LayergeView headless</strong>
                 ,
                 <strong>EntryContext (usePresenterBindings)</strong>
