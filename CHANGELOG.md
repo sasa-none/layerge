@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `usePresenter()` now returns a no-op handle that includes `settled` when called outside a presenter. It resolves immediately with `{status: 'aborted'}`, matching the `PresenterHandle` contract that `index.d.ts` already declares. Previously `settled` was `undefined` there, so `usePresenter().handle.settled.then(...)` threw outside a presenter and callers were forced to branch — which defeats the purpose of the no-op handle.
+
 ## 1.0.0 (2026-05-28)
 
 ### Added

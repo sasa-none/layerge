@@ -26,15 +26,17 @@ const usePresenter = (): {handle: PresenterHandle; entry: PresenterEntry | null;
     /**
      * noopHandle - Presenterコンテキストが存在しない場合のデフォルトハンドル
      *
-     * NOTE: PresenterHandle は settled を宣言していますが、この no-op は保持しません。
-     * 移行前からの挙動であるため、ここでは変更せずキャストで維持します。
+     * 呼び出し側に分岐を強いないため、PresenterHandle の全メンバーを満たします。
+     * settled は「何も起きなかった」を表す aborted で即座に解決します
+     * （内部の blocked を公開面で aborted に畳む規則に合わせています）。
      * @constant
      */
-    const noopHandle = {
+    const noopHandle: PresenterHandle = {
         close: () => {},
         closed: Promise.resolve(),
+        settled: Promise.resolve({status: 'aborted'}),
         isActive: false
-    } as PresenterHandle;
+    };
 
     return {
         get handle() {

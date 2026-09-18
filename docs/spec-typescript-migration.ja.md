@@ -208,6 +208,52 @@ E2E が通らない状態で次の段階へ進んではいけません。
 - `usePresenterLeaveGuard` は**公開 API でありながら現在 `index.d.ts` に宣言がありません**（ROADMAP A-5）。本移行で自動的に解消されます
 - `useLayergeLink` は 424 行あり、composables の中では最大です
 
+### 段階 4-b: `noopHandle` に `settled` を追加する（2026-09-18 決定 / 段階 5 の前に実施）
+
+段階 4 で、**実装が自身の公開契約に違反している箇所**が見つかりました。
+
+`usePresenter()` は Presenter 配下でないとき `noopHandle` を返しますが、これは `close` / `closed` / `isActive` しか持たず、**`settled` を持ちません。**一方、公開型 `PresenterHandle` は `types.ts` でも `index.d.ts` でも **`settled` を必須として宣言しています。**
+
+#### 決定: 実装を型に合わせる（選択肢 2）
+
+```ts
+const noopHandle: PresenterHandle = {
+    close: () => {},
+    closed: Promise.resolve(),
+    settled: Promise.resolve({status: 'aborted'}),
+    isActive: false
+};
+```
+
+キャスト（`as PresenterHandle`）は不要になります。
+
+#### なぜ選択肢 2 なのか
+
+1. **`noopHandle` の存在理由そのものが「分岐させないこと」だからです。**`usePresenter` の JSDoc は「Page 上なら no-op を返します（**分岐不要**）」と明記しています。`settled` だけ欠けていると、Presenter 外で `usePresenter().handle.settled.then(...)` が例外になり、**呼び出し側は結局分岐を強いられます。**no-op として機能していません
+2. **公開契約は既に `settled` の存在を約束しています。**`index.d.ts` が公開された時点で、利用者は `settled` があるものとして書けます。したがってこれは **API の追加ではなく、実装を公開済みの契約に合わせる是正**です
+3. **選択肢 1 は公開型を変えることになり、5-1（公開 API を変更しない）に抵触します。**加えて、利用者に分岐を強いる方向であり、1 の理由と矛盾します
+
+#### 値を `aborted` とする理由
+
+何も開かれていないため `completed` ではなく、失敗していないので `failed` でもなく、後続に追い越されてもいないので `superseded` でもありません。2-1 の射影規則で、内部の `blocked`（何も起きなかった）は公開面では **`aborted`** に畳み込まれます。これに合わせます。`closed` が即座に resolve するのと同様、`settled` も即座に resolve します。
+
+#### 5-1 の例外として扱います
+
+本件は**実行時の挙動が変わります**（`undefined` → 解決済みの Promise）。5-1 は「本移行はリファクタリングであり機能変更ではない」としているため、**明示的な例外として記録します。**
+
+例外を認める理由は、現状が公開契約違反であり、**放置したまま段階 7 で型定義を生成すると「型は `settled` があると言うが実物には無い」という状態が固定される**ためです。移行の目的に照らして、ここで直すのが正しい場所です。
+
+**実施時の条件:**
+
+- **独立したコミットとすること。**段階 5 に混ぜないでください
+- **単体テストを追加すること。**Presenter 外で `usePresenter().handle.settled` が `{status: 'aborted'}` に解決されることを固定します。現在この経路を覆うテストは存在しません
+- **`CHANGELOG.md` に記録すること。**利用者から見える修正です
+- 実装の変更は `usePresenter` の `noopHandle` に限ること
+
+> **補足:** `noopHandle` はライブラリ自身のコードからも到達します。`useLayergeLink.ts:194` と `usePresenterLeaveGuard.ts:185` が `usePresenter()` を呼んでおり、いずれも Presenter 外で使われ得ます。デモにも `CacheStatePage.vue` という到達経路があります。**机上の懸念ではありません。**
+
+---
+
 ### 段階 5: `layerge/router/createLayergeRouter.ts`
 
 **最難関です。単独の段階として扱ってください。**2,731 行あり、他と混ぜてはいけません。
