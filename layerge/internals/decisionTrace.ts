@@ -1,57 +1,92 @@
 /**
  * DecisionTraceLevel - DecisionTrace の出力レベル
- * @typedef {'off'|'on-failure'|'on-unexpected'|'verbose'} DecisionTraceLevel
  */
+export type DecisionTraceLevel = 'off' | 'on-failure' | 'on-unexpected' | 'verbose';
 
 /**
  * DecisionTraceEventType - DecisionTrace のイベント種別（固定）
- * @typedef {'start'|'resolveTarget'|'validate'|'runHook'|'applyRouter'|'latestWins'|'commitLeaving'|'settle'|'log'|'error'} DecisionTraceEventType
  */
+export type DecisionTraceEventType =
+    | 'start'
+    | 'resolveTarget'
+    | 'validate'
+    | 'runHook'
+    | 'applyRouter'
+    | 'latestWins'
+    | 'commitLeaving'
+    | 'settle'
+    | 'log'
+    | 'error';
 
 /**
  * DecisionTraceEvent - DecisionTrace の1イベント
- * @typedef {object} DecisionTraceEvent
- * @property {DecisionTraceEventType} type - 種別
- * @property {number} at - 記録時刻（epoch ms）
- * @property {object|undefined} [data] - 付随情報（サニタイズ済み）
  */
+export interface DecisionTraceEvent {
+    /** 種別 */
+    type: DecisionTraceEventType;
+    /** 記録時刻（epoch ms） */
+    at: number;
+    /** 付随情報（サニタイズ済み） */
+    data?: object | undefined;
+}
 
 /**
  * DecisionTrace - traceId に紐づくイベント列
- * @typedef {object} DecisionTrace
- * @property {string} traceId - 操作単位のtraceId
- * @property {DecisionTraceEvent[]} events - イベント列
  */
+export interface DecisionTrace {
+    /** 操作単位のtraceId */
+    traceId: string;
+    /** イベント列 */
+    events: DecisionTraceEvent[];
+}
 
 /**
  * DecisionTraceStore - DecisionTrace を保持するリングバッファ
- * @typedef {object} DecisionTraceStore
- * @property {(traceId: string) => DecisionTrace|null} start - trace を開始します
- * @property {(traceId: string, type: DecisionTraceEventType, data?: object) => void} push - イベントを追加します
- * @property {(traceId: string) => void} settle - trace を確定します
- * @property {() => DecisionTrace[]} getAll - 直近の trace を取得します
  */
+export interface DecisionTraceStore {
+    /** trace を開始します */
+    start: (traceId: string) => DecisionTrace | null;
+    /** イベントを追加します */
+    push: (traceId: string, type: DecisionTraceEventType, data?: object) => void;
+    /** trace を確定します */
+    settle: (traceId: string) => void;
+    /** 直近の trace を取得します */
+    getAll: () => DecisionTrace[];
+}
+
+/**
+ * DecisionTraceStoreOptions - createDecisionTraceStore の引数
+ */
+export interface DecisionTraceStoreOptions {
+    /** 開発環境か */
+    isDev: boolean;
+    /** 出力レベル */
+    level: DecisionTraceLevel;
+    /** trace 保持件数 */
+    maxTraces?: number;
+    /** 1 trace あたりのイベント上限 */
+    maxEventsPerTrace?: number;
+    /** 付随情報のサニタイズ */
+    sanitize?: (data: object) => object;
+}
 
 /**
  * MAX_TRACES_DEFAULT - trace 保持件数の既定値
  * @constant
- * @type {number}
  */
 const MAX_TRACES_DEFAULT = 50;
 
 /**
  * MAX_EVENTS_PER_TRACE_DEFAULT - 1 trace あたりのイベント上限の既定値
  * @constant
- * @type {number}
  */
 const MAX_EVENTS_PER_TRACE_DEFAULT = 100;
 
 /**
  * VALID_EVENT_TYPES - イベント種別の固定リスト
  * @constant
- * @type {DecisionTraceEventType[]}
  */
-const VALID_EVENT_TYPES = [
+const VALID_EVENT_TYPES: DecisionTraceEventType[] = [
     'start',
     'resolveTarget',
     'validate',
@@ -66,10 +101,10 @@ const VALID_EVENT_TYPES = [
 
 /**
  * createDecisionTraceStore - DecisionTrace 用のリングバッファを作成します
- * @param {{isDev: boolean, level: DecisionTraceLevel, maxTraces?: number, maxEventsPerTrace?: number, sanitize?: (data: object) => object}} options - options
- * @returns {DecisionTraceStore} store
+ * @param options - options
+ * @returns store
  */
-const createDecisionTraceStore = (options) => {
+const createDecisionTraceStore = (options: DecisionTraceStoreOptions): DecisionTraceStore => {
     const isDev = options.isDev === true;
     const level = options.level;
 
@@ -82,21 +117,19 @@ const createDecisionTraceStore = (options) => {
     const sanitize =
         typeof options.sanitize === 'function'
             ? options.sanitize
-            : (data) => {
+            : (data: object): object => {
                   return data;
               };
 
-    /** @type {Map<string, DecisionTrace>} */
-    const active = new Map();
+    const active = new Map<string, DecisionTrace>();
 
-    /** @type {DecisionTrace[]} */
-    const ring = [];
+    const ring: DecisionTrace[] = [];
 
     /**
      * shouldCapture - 現在の設定で trace を収集するか
-     * @returns {boolean} capture
+     * @returns capture
      */
-    const shouldCapture = () => {
+    const shouldCapture = (): boolean => {
         if (!isDev) {
             return false;
         }
@@ -110,24 +143,24 @@ const createDecisionTraceStore = (options) => {
 
     /**
      * isValidType - イベント種別が固定リストに含まれるか
-     * @param {string} type - type
-     * @returns {type is DecisionTraceEventType} valid
+     * @param type - type
+     * @returns valid
      */
-    const isValidType = (type) => {
-        return VALID_EVENT_TYPES.indexOf(/** @type {any} */ (type)) !== -1;
+    const isValidType = (type: string): type is DecisionTraceEventType => {
+        return (VALID_EVENT_TYPES as string[]).indexOf(type) !== -1;
     };
 
     /**
      * start - trace を開始します
-     * @param {string} traceId - traceId
-     * @returns {DecisionTrace|null} trace
+     * @param traceId - traceId
+     * @returns trace
      */
-    const start = (traceId) => {
+    const start = (traceId: string): DecisionTrace | null => {
         if (!shouldCapture()) {
             return null;
         }
 
-        const trace = {
+        const trace: DecisionTrace = {
             traceId: traceId,
             events: []
         };
@@ -142,12 +175,11 @@ const createDecisionTraceStore = (options) => {
 
     /**
      * push - イベントを追加します
-     * @param {string} traceId - traceId
-     * @param {DecisionTraceEventType} type - type
-     * @param {object} [data] - data
-     * @returns {void}
+     * @param traceId - traceId
+     * @param type - type
+     * @param data - data
      */
-    const push = (traceId, type, data) => {
+    const push = (traceId: string, type: DecisionTraceEventType, data?: object): void => {
         const trace = active.get(traceId);
 
         if (!trace) {
@@ -189,10 +221,9 @@ const createDecisionTraceStore = (options) => {
 
     /**
      * settle - trace を確定します
-     * @param {string} traceId - traceId
-     * @returns {void}
+     * @param traceId - traceId
      */
-    const settle = (traceId) => {
+    const settle = (traceId: string): void => {
         const trace = active.get(traceId);
         if (!trace) {
             return;
@@ -211,9 +242,9 @@ const createDecisionTraceStore = (options) => {
 
     /**
      * getAll - 直近の trace を取得します
-     * @returns {DecisionTrace[]} traces
+     * @returns traces
      */
-    const getAll = () => {
+    const getAll = (): DecisionTrace[] => {
         return ring.slice();
     };
 
