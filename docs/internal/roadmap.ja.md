@@ -699,7 +699,26 @@ handle._resolveSettled({status: 'completed'});
 
 優先度を A の中では 🟡 としたのは、これが**誤用したときだけ壊れる**問題であり、A-15 / A-16 のように**正しく使っていても影響を受ける**問題ではないためです。ただし 1.0.0 で公開すると、ハンドルの形は以後の互換性の対象になります。
 
-### A-18. 未公開のまま非推奨エイリアス `fakePath` を出荷しようとしています 🟡
+### A-18. 未公開のまま非推奨エイリアス `fakePath` を出荷しようとしています ✅ 対応済み（2026-09-19 / `989757a`）
+#### 対応結果（`989757a`）— Cowork 側で検証済み
+
+単体テストは **36 件のまま**で、`{fakePath}` → `{url}` の書き換えが 5 箇所。指示した罠（`tests/v3x_async_api.test.js` は 4 件中 3 件が `fakePath` を使っており、削除すると pushAsync と supersede の被覆が消える）を Code が正しく回避しています。
+
+警告文は `open() ignores url.` になり、**ライブラリの実行時メッセージからバージョン表記が 0 件**になりました。`url` 側の警告 2 種は保持されています。
+
+#### 記録: `allowUnmatched` の非対称（Code からの報告・対応不要）
+
+`allowUnmatched` は `typeof url === 'string'` のみを見るため、`url` に `RouteLocationRaw` を渡した場合は `false` になります。つまり `push(Component, {url: {query: {...}}})` で未マッチ URL を指す経路は許容されません。
+
+ただし `RouteLocationRaw` 形は現在ルートの query / hash 差し替えとして解決されるため、未マッチになる経路が実際には生じません。**実害なし**と判断します。今回の範囲外として触らなかった Code の判断は正しいです。将来 `url` の `RouteLocationRaw` 形で任意パスを指せるようにする場合は、ここが先に問題になります。
+
+#### 記録: 履歴文書の扱い（Code の判断・妥当）
+
+`CHANGELOG.md` の過去節と `docs/internal/spec-typescript-migration.ja.md` の記述を書き換えず、前者には Unreleased の `### Removed` を、後者には失効注記を追加した判断は妥当です。**完了した契約書を後から書き換えると、当時何を決めたのかが追えなくなります。** 本書（roadmap）を対象外としたのと同じ理由です。そのままにしてください。
+
+なお `CHANGELOG.md` 自体には別の問題があります（A-20）。
+
+
 
 `fakePath` はライブラリ本体に完全に実装されたまま残っています（`types.ts:45` の型定義、`createLayergeRouter.ts:2016` 以降の実行時処理、`tests/` の単体テスト 2 ファイル）。README の公開 API 表にはこう書かれています。
 
@@ -723,6 +742,106 @@ handle._resolveSettled({status: 'completed'});
 - **ある場合**: 残しますが、README の記述を書き換える必要があります。「Deprecated since v3.0」ではなく「Deprecated alias for `url`; kept for pre-release internal users and scheduled for removal in 2.0.0」のように、**公開時系列と整合する言い方**にします。
 
 A-15 と同じ性質の論点です。公開した瞬間に凍結され、後から直すには破壊的変更が要ります。
+
+### A-19. 出荷する型定義が `moduleResolution: node16` / `nodenext` の ESM 利用者に解決されません 🔴
+
+**2026-09-19 に Cowork が実測して発見しました。** `tsc` は純 JS で動くため、Cowork の環境でも実行できます（vite / vitest / Playwright とは異なります）。
+
+#### 症状
+
+`dist/types` を実際の利用者として型検査した結果です。プローブは公開 API 9 個を import するだけの `.ts` ファイルです。
+
+| 利用者の設定 | 結果 |
+|---|---|
+| `moduleResolution: "bundler"`（Vite / webpack） | ✅ エラー 0 件 |
+| `moduleResolution: "bundler"` + `skipLibCheck: false` | ✅ エラー 0 件（出荷する `.d.ts` 自体も健全） |
+| `moduleResolution: "node16"` + CJS（`require` 条件 → `.d.cts`） | ✅ エラー 0 件 |
+| **`moduleResolution: "node16"` + ESM（`import` 条件 → `.d.ts`）** | ❌ **公開 API がすべて「存在しない」** |
+
+失敗時のエラーは次のとおりです。
+
+```
+error TS2724: '"layerge"' has no exported member named 'createLayergeRouter'. Did you mean 'LayergeRouter'?
+error TS2305: Module '"layerge"' has no exported member 'useLayerge'.
+error TS2305: Module '"layerge"' has no exported member 'usePresenter'.
+error TS2724: '"layerge"' has no exported member named 'useLayergeLink'. Did you mean 'LayergeLink'?
+error TS2305: Module '"layerge"' has no exported member 'usePresenterBindings'.
+```
+
+**型だけの export（`LayergeRouter` など）は解決され、実行時 API が丸ごと消えます。** 利用者から見ると「型定義が壊れているパッケージ」そのものです。
+
+なお、検査が実際に機能していることは negative control で確認済みです（存在しない export を import すると TS2305 が出ます）。exit=0 は「何も検査していない」ではありません。
+
+#### 原因
+
+出荷する `.d.ts` の相対 specifier に**拡張子がありません**。
+
+```ts
+// dist/types/index.d.ts
+export * from './router/createLayergeRouter';   // ← 拡張子なし
+export * from './composables/usePresenter';
+```
+
+Node16 / NodeNext の **ESM 解決では、相対 specifier に明示的な拡張子が必須**です。CJS 解決は拡張子なしを許容するため `.d.cts` 側は通り、bundler 解決も許容するため Vite 利用者は通ります。**壊れるのは ESM × node16 の組み合わせだけ**ですが、これは現在のアプリで最も標準的な設定です。
+
+該当は `dist/types` 全体で **20 ファイル・32 箇所**（`index.d.ts` / `index.d.cts` が各 7、他は各 1）。元を辿ると TypeScript ソース側の相対 import が拡張子なしで書かれており、`vue-tsc` がそれをそのまま `.d.ts` に出力しています。
+
+#### 修正が有効であることは検証済みです
+
+`dist/types/index.d.ts` の相対 specifier に `.js` を付けた fixture を作り、同じ node16 ESM プローブを実行したところ、**エラーが 0 件になりました**（`.vue` の import は拡張子を付けずとも解決します）。
+
+推奨する修正は、ソース側の相対 import に `.js` 拡張子を付けることです（TypeScript が ESM ライブラリに対して公式に推奨している書き方で、`.ts` ソースに `.js` と書きます）。`vue-tsc` と Vite の双方がこの規約を解釈します。出力を後処理する案もありますが、ソースを正すほうが原理的で、`emit-cts-types.mjs` に分岐を増やさずに済みます。
+
+#### なぜ CI をすり抜けたのか（重要）
+
+**consumer マトリクスの 2 つは TypeScript を使っていません。** どちらも `vite build` のみ、devDependencies は `@vitejs/plugin-vue` と `vite` だけで、`.ts` ファイルは 0 件です。
+
+したがって `pack-and-consumers` ジョブが検証しているのは `index.mjs` / `index.cjs` の**実行時解決**であって、型定義の解決ではありません。B-5 は `.d.ts` と `.d.cts` が**互いに同一**であることを検証しましたが、同一であることと利用可能であることは別です。`vue-tsc --noEmit` はソースを検査しますが、`stripInternal` を含む emit 後の成果物は検査しません。
+
+つまり、**B-1（TypeScript 全面移行）の成果物そのものが、CI で一度も利用者視点の検証を受けていませんでした。** 移行仕様書 §6-3 は consumer を「型解決の検証」と書いていますが、実態は JS のみです（この食い違いは Code が報告してくれました）。
+
+これは A-11・A-16 と同じ型の漏れです。**assert している対象が、保証したい対象とずれている。** 3 回目です。
+
+#### 受け入れ条件
+
+1. ソースの相対 import に `.js` 拡張子を付け、`dist/types` の拡張子なし相対 specifier を **32 箇所 → 0 箇所**にする
+2. **TypeScript の consumer を CI に追加する。** 既存 2 つに並べる 3 つ目として、`moduleResolution: "nodenext"`、`"type": "module"`、`skipLibCheck: false` で `tsc --noEmit` を実行し、公開 API を import するだけのファイルを型検査する。**これが本項の本質的な対処です。**（1 だけでは、次に同じ形で壊れたときにまた誰も気づきません）
+3. 既存の検証（lint / typecheck / 単体 / E2E / verify-pack / smoke-dist / 既存 consumer）がすべて緑
+
+#### 再現手順（Cowork が実施したもの）
+
+```
+mkdir -p ~/probe/src ~/probe/node_modules
+ln -s <repo> ~/probe/node_modules/layerge
+ln -s <repo>/node_modules/{vue,vue-router,@vue} ~/probe/node_modules/
+# ~/probe/package.json に {"type":"module"}
+# tsconfig: module/moduleResolution = node16, strict, noEmit, types: []
+node <repo>/node_modules/typescript/bin/tsc -p tsconfig.json
+```
+
+---
+
+### A-20. CHANGELOG が、未公開のパッケージに公開済みの体裁を与えています 🟡
+
+現状の見出し構成です。
+
+```
+## Unreleased
+## 1.0.0 (2026-05-28)
+## Pre-public milestone 1.1.0 (2026-01-05)
+```
+
+`package.json` の version は `1.0.0` で、**まだ一度も公開されていません**。それにもかかわらず 1.0.0 が日付つきのリリースとして記載されています。npm でこのパッケージを見る人にとって、公開日は「今日」であり 2026-05-28 ではありません。
+
+さらに、1.0.0（5 月）の下に 1.1.0（1 月）が並んでいます。番号は大きいのに日付は前です。上から読んだ人は順序を理解できません。1.1.0 には「Pre-public milestone」というラベルが付いており、**内部の開発フェーズ番号であって semver ではないこと**が明示されています。同じ配慮が 1.0.0 には及んでいません。
+
+これは A-18 と同根です。公開時系列に存在しないバージョンが、利用者が読む場所に残っています。
+
+#### 検討していただきたい整理
+
+公開前の現時点では、`Unreleased` と `1.0.0` の内容は**すべて初回リリースの一部**です。したがって公開時に 1 つの `## 1.0.0` に畳み、日付を実際の公開日にするのが自然です。`Pre-public milestone 1.1.0` は、開発経緯の記録として残す価値があるなら現在のラベルのまま末尾に置けば、semver と誤読されません。
+
+A-4（`package.json` のメタデータ）と同じく公開直前に確定させる種類の項目なので、着手のタイミングはあなたの判断に委ねます。
 
 ## 優先度 B — 公開直後に着手すべきもの
 
@@ -1112,7 +1231,7 @@ deep link を共有された人がモーダルを閉じると、アプリの実�
 
 「戻るでオーバーレイだけが閉じ、背景が保持される」という Layerge の中心的な主張は、実測で確認できました。
 
-### C-6. E2E ファイル名に開発フェーズの接頭辞が残っています 🟢
+### C-6. E2E ファイル名に開発フェーズの接頭辞が残っています ✅ 対応済み（2026-09-19 / `d777dbb`）
 
 C-5 で demo 側は一掃しましたが、`e2e/` に 12 ファイル残っています。
 
@@ -1132,7 +1251,14 @@ C-5 より優先度を下げた（🟢）のは、E2E ファイル名は develop
 
 ---
 
-### C-7. `.claude/` の扱い 🟢
+
+#### 残った分（Code からの報告・妥当）
+
+ファイル名の接頭辞は消えましたが、**テスト本文の `describe` / `test` 名**に `v3.x closeAsync demo` `v4: repeated …` などの表記が **12 件**残っています。「ファイル名のみ」と指示したので Code は触っていません。判断は正しいです。
+
+これらは Playwright のレポート出力に現れるため、ファイル名と同じ理由で落とすべきです。ただし危険度は低く、A-19 の対応に含めて片付けるか、公開後に回すかはどちらでも構いません。**A-19 のほうが優先です。**
+
+### C-7. `.claude/` の扱い ✅ 対応済み（2026-09-19 / `eabd999`）
 
 Code がブラウザ確認用に `.claude/launch.json` を作成し、未追跡のまま残っています。
 
