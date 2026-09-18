@@ -248,9 +248,8 @@ There is no `replaceAsync` or `openAsync` — `pushAsync` and `closeAsync` are t
 | `preMounted` | `boolean` | all | Allows the DOM to exist before the overlay becomes active (hidden until shown). |
 | `keepMounted` | `boolean` | all | On close, hide instead of unmounting, so re-opening does not remount. |
 | `mountPreset` | `'default' \| 'keep' \| 'pre' \| 'prekeep'` | all | Shorthand for the two flags above. |
-| `fakePath` | `string` | `push` / `replace` | **Deprecated since v3.0** — use `url`. Still accepted for compatibility. |
 
-`open()` ignores `url` and `fakePath` and warns in development.
+`open()` ignores `url` and warns in development.
 
 ### `PresenterHandle`
 
@@ -278,7 +277,7 @@ When each value is used:
 
 ### `url`
 
-`url` is the successor to `fakePath`. It changes the URL for history integration while Layerge renders whatever `target` you gave it.
+`url` changes the URL for history integration while Layerge renders whatever `target` you gave it.
 
 ```js
 router.modal.push(() => import('./SettingsModal.vue'), {url: '/modal/settings'});
@@ -842,8 +841,6 @@ pnpm dev
 ```
 
 The demo is the fastest way to validate **history integration**, **async consistency (latest-wins)**, and **URL integration** (bridge routes).
-
-> The demo app and the E2E specs use `url` throughout. The deprecated `fakePath` option is still accepted by the library and is covered by the unit tests.
 
 ### Status panel (Home: `/`)
 

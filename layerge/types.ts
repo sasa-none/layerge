@@ -24,7 +24,7 @@ export type PresenterTarget = RouteLocationRaw | Component | (() => Promise<Comp
 /**
  * PresenterOpenOptions - openの第2引数
  *
- * v3.0: openはview-onlyのため、URLオプション（fakePath/url）は受け付けません
+ * v3.0: openはview-onlyのため、URLオプション（url）は受け付けません
  */
 export interface PresenterOpenOptions {
     /** true の場合、表示前にDOMが存在してよい（最小のhidden制御のみ） */
@@ -41,8 +41,6 @@ export interface PresenterOpenOptions {
 export interface PresenterPushReplaceOptions {
     /** push/replace のみ：URL を指定します（Presenter は Component/loader でも OK） */
     url?: string | RouteLocationRaw | undefined;
-    /** @deprecated v3.0: url へ移行しました（互換のために残しています） */
-    fakePath?: string | undefined;
     /** true の場合、表示前にDOMが存在してよい（最小のhidden制御のみ） */
     preMounted?: boolean | undefined;
     /** true の場合、close時にアンマウントせず非表示のみを行います */
@@ -177,7 +175,7 @@ export interface PendingPresenterNav {
     returnTo: string | null;
     /** 検証用に解決したルート */
     route: RouteLocationNormalizedLoaded;
-    /** url(fakePath互換) のため未マッチルートを許容するか */
+    /** url のため未マッチルートを許容するか */
     allowUnmatched: boolean;
     /** Component/loader target の場合の描画用コンポーネント */
     viewComponent: Component | null;

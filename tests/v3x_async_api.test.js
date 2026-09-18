@@ -15,7 +15,7 @@ describe('v3.x async API (opt-in)', () => {
             cache: false
         });
 
-        const resultPromise = wrapped.modal.pushAsync('/page-a', {fakePath: '/modal/a'});
+        const resultPromise = wrapped.modal.pushAsync('/page-a', {url: '/modal/a'});
         await wrapped._flushNavigation();
 
         await expect(resultPromise).resolves.toEqual({status: 'completed'});
@@ -40,8 +40,8 @@ describe('v3.x async API (opt-in)', () => {
             cache: false
         });
 
-        const a = wrapped.modal.pushAsync('/slow-a', {fakePath: '/modal/slow-a'});
-        const b = wrapped.modal.pushAsync('/fast-b', {fakePath: '/modal/fast-b'});
+        const a = wrapped.modal.pushAsync('/slow-a', {url: '/modal/slow-a'});
+        const b = wrapped.modal.pushAsync('/fast-b', {url: '/modal/fast-b'});
 
         await wrapped._flushAllNavigations();
 

@@ -1130,7 +1130,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     /**
      * assertValidRoute - ルートが有効か検証します
      * @param route - 解決済みルート
-     * @param [allowUnmatched] - true の場合、未マッチ route（matched.length===0）を許容します（url/fakePath互換用途）
+     * @param [allowUnmatched] - true の場合、未マッチ route（matched.length===0）を許容します（url 用途）
      * @throws {Error} 無効ルートの場合にスロー
      * @returns
      */
@@ -2008,12 +2008,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
 
         const safeOptions = options ? options : {};
 
-        // open の options には url / fakePath を持たせていない（誤用を型で抑止するため）。
+        // open の options には url を持たせていない（誤用を型で抑止するため）。
         // ただし実装は誤用を検出して警告するために読み出す。
         const url = (safeOptions as PresenterPushReplaceOptions).url;
-
-        /** @type {string|undefined} */
-        const fakePath = (safeOptions as PresenterPushReplaceOptions).fakePath;
 
         const mountOptions = resolveMountOptions(safeOptions as Record<string, unknown>);
 
@@ -2021,21 +2018,13 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             throw new Error('[Layerge] url must be a string or RouteLocationRaw.');
         }
 
-        if (fakePath !== undefined && typeof fakePath !== 'string') {
-            throw new Error('[Layerge] fakePath must be a string.');
-        }
-
-        if (kind === 'open' && (url !== undefined || fakePath !== undefined)) {
-            warnDev('open() ignores url/fakePath in v3.0.', {url: url, fakePath: fakePath});
+        if (kind === 'open' && url !== undefined) {
+            warnDev('open() ignores url.', {url: url});
         }
 
         // v3.0: url は push/replace のみ有効
         if ((kind === 'push' || kind === 'replace') && url !== undefined && isRouteTarget(target)) {
             warnDev(`${kind}() ignores url when target is RouteLocationRaw.`, {url: url});
-        }
-
-        if ((kind === 'push' || kind === 'replace') && fakePath !== undefined && isRouteTarget(target)) {
-            warnDev(`${kind}() ignores fakePath when target is RouteLocationRaw.`, {fakePath: fakePath});
         }
 
         const current = router.currentRoute.value;
@@ -2191,7 +2180,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         }
 
         /**
-         * resolveUrlLocation - url（または fakePath互換）を解決可能なRouteLocationRawへ変換します
+         * resolveUrlLocation - url を解決可能なRouteLocationRawへ変換します
          * @param rawUrl - url
          * @param base - 基準ルート
          * @returns 解決用のRouteLocationRaw
@@ -2222,11 +2211,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             navigateTo = target;
         } else if (url !== undefined) {
             navigateTo = resolveUrlLocation(url, current);
-        } else if (fakePath) {
-            navigateTo = resolveUrlLocation(fakePath, current);
         }
 
-        // Component/loader で url/fakePath が無ければ URL は動かさず commit する
+        // Component/loader で url が無ければ URL は動かさず commit する
         if (navigateTo === null) {
             traceStage = 'open';
 
@@ -2260,8 +2247,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             return handle;
         }
 
-        const allowUnmatched =
-            !isRouteTarget(target) && (typeof url === 'string' || typeof fakePath === 'string');
+        const allowUnmatched = !isRouteTarget(target) && typeof url === 'string';
         const resolved = router.resolve(navigateTo);
         assertValidRoute(resolved, allowUnmatched);
 

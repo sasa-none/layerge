@@ -6,6 +6,10 @@
 
 - Type definitions are now generated from the TypeScript sources instead of being hand-written, and internal members are stripped from them. Members that were already declared `/** @internal */` — `$layerge.pending`, `$layerge._closeTop` / `_closeAll` / `_closeById` / `_exitPresenterMode` / `_setInvoker` / `_getInvoker` / `_deleteInvoker` / `_notifyEnterDone` / `_notifyLeaveDone` / `_invokers` / `_kept`, and `PresenterEntry._mountKey` / `_leavingIndex` / `_leavingDepth` / `_preMounted` / `_keepMounted` / `_isHidden` / `_keepKey` — no longer appear in the published types. **TypeScript code that reached for them now fails to compile.** They were never part of the public contract: the previous hand-written `index.d.ts` already marked them `@internal`, and the README states that the `_`-prefixed members of `router.$layerge` are internal. Runtime behaviour is unchanged.
 
+### Removed
+
+- The deprecated `fakePath` option is gone from `push` / `replace`. Use `url`, which does the same thing and also accepts a `RouteLocationRaw`. `fakePath` was never part of a published release — the package has not been published — so no existing code can depend on it, and keeping it until 1.0.0 would have made removal a breaking change. The development warning emitted by `open()` now reads `open() ignores url.` (it previously named `fakePath` and referred to a version that was never released).
+
 ### Fixed
 
 - Dev diagnostics no longer drop the navigation error when closing a presenter. If URL restore fails during `close()`, the `[Layerge][error]` line now carries the actual error (with its stack) instead of only the outcome summary. Development-only output; no public API change.

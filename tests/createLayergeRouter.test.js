@@ -207,7 +207,7 @@ describe('createLayergeRouter (v1)', () => {
         wrapped.$layerge._notifyLeaveDone(entryId);
     });
 
-    it('supports loader target and fakePath on push', async () => {
+    it('supports loader target and url on push', async () => {
         const router = createFakeRouter({initial: '/'});
 
         const wrapped = createLayergeRouter({
@@ -219,7 +219,7 @@ describe('createLayergeRouter (v1)', () => {
             cache: false
         });
 
-        wrapped.modal.push(() => Promise.resolve({default: /** @type {any} */ ({})}), {fakePath: '/modal/a'});
+        wrapped.modal.push(() => Promise.resolve({default: /** @type {any} */ ({})}), {url: '/modal/a'});
         await wrapped._flushNavigation();
 
         expect(wrapped.getLayergeState()).toEqual({mode: 'presenter', depth: 1});

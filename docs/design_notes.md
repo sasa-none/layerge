@@ -85,7 +85,7 @@ Layerge has two ways to leave presenter mode:
 
 ### replace-close behavior
 
-When `replace(...,{fakePath})` is used to open a presenter:
+When `replace(...,{url})` is used to open a presenter:
 
 - Layerge saves `returnTo = from.fullPath` on the entry.
 - Closing the top entry restores URL via `router.replace(returnTo)` by default.
