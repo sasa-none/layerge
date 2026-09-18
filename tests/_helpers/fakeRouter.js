@@ -108,7 +108,20 @@ const createFakeRouter = (options = {}) => {
                 };
 
                 try {
-                    hook(to, from, next);
+                    // vue-router 4 以降のガードは値を return する形も取る。
+                    // 実物と同じく、返り値が undefined 以外なら next(値) と同義に扱う。
+                    const returned = hook(to, from, next);
+
+                    if (returned !== undefined) {
+                        next(returned);
+                        return;
+                    }
+
+                    // next を呼ばず、値も返さないガードは「続行」とみなす
+                    // （3 引数を宣言していないガードは next を受け取らない）
+                    if (!called && hook.length < 3) {
+                        next();
+                    }
                 } catch (e) {
                     rejectNext(e);
                 }

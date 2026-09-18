@@ -2771,7 +2771,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     };
 
     // Presenter 中に通常遷移が走ったら、前同期で exitPresenterMode（安全第一）
-    router.beforeEach((to, from, next) => {
+    router.beforeEach((to) => {
         // If this navigation is a stale one (superseded by latest-wins), cancel it.
         // This prevents a delayed guard from accidentally dropping presenter mode later.
         const staleAt = staleNavs.get(to.fullPath);
@@ -2780,28 +2780,24 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             staleNavs.delete(to.fullPath);
 
             if (Date.now() - staleAt < STALE_NAV_TTL_MS) {
-                next(false);
-                return;
+                return false;
             }
         }
 
         const isModalPending = !!$layerge.pending;
 
         if ($layerge.mode !== 'presenter') {
-            next();
             return;
         }
 
         // modal.push/replace の遷移中は afterEach で commit
         if (isModalPending) {
-            next();
             return;
         }
 
         // 1) 背景へ戻るなら overlayだけ消す（freezeは維持）
         if ($layerge.backgroundRoute && isSameAsBackground(to)) {
             clearPresenterOverlay();
-            next();
             return;
         }
 
@@ -2817,14 +2813,12 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             // presenter を維持（多段 back でも page に落とさない）
             $layerge.mode = 'presenter';
 
-            next();
             return;
         }
 
         // 3) どこにも一致しないなら、遷移が成功した場合のみ文脈破棄（安全第一）
         exitOnNextSuccess = true;
         exitTargetFullPath = to.fullPath;
-        next();
     });
 
     $layerge._exitPresenterMode = exitPresenterMode;
