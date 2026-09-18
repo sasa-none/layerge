@@ -1,12 +1,12 @@
-export * from './router/createLayergeRouter';
+export * from './router/createLayergeRouter.js';
 export {default as LayergeView} from './view/LayergeView.vue';
 export {default as LayergeTransition} from './view/LayergeTransition.vue';
 export {default as LayergeLink} from './components/LayergeLink.vue';
-export * from './composables/usePresenter';
-export * from './composables/useLayerge';
-export * from './composables/usePresenterBindings';
-export * from './composables/useLayergeLink';
-export {usePresenterLeaveGuard} from './composables/usePresenterLeaveGuard';
+export * from './composables/usePresenter.js';
+export * from './composables/useLayerge.js';
+export * from './composables/usePresenterBindings.js';
+export * from './composables/useLayergeLink.js';
+export {usePresenterLeaveGuard} from './composables/usePresenterLeaveGuard.js';
 
 // 公開型の再エクスポート。
 // 手書きの index.d.ts が公開していた 25 型と 1 対 1 に対応させています。
@@ -37,4 +37,4 @@ export type {
     PresenterTarget,
     UseLayergeLinkBindings,
     UseLayergeLinkHandlers
-} from './types';
+} from './types.js';

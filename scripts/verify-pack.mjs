@@ -22,6 +22,7 @@ const EXPECTED_FILES = [
     'README.md',
     'dist/index.cjs',
     'dist/index.mjs',
+    'dist/types/components/LayergeLink.d.vue.ts',
     'dist/types/components/LayergeLink.vue.d.cts',
     'dist/types/components/LayergeLink.vue.d.ts',
     'dist/types/composables/useLayerge.d.cts',
@@ -56,8 +57,10 @@ const EXPECTED_FILES = [
     'dist/types/router/createLayergeRouter.d.ts',
     'dist/types/types.d.cts',
     'dist/types/types.d.ts',
+    'dist/types/view/LayergeTransition.d.vue.ts',
     'dist/types/view/LayergeTransition.vue.d.cts',
     'dist/types/view/LayergeTransition.vue.d.ts',
+    'dist/types/view/LayergeView.d.vue.ts',
     'dist/types/view/LayergeView.vue.d.cts',
     'dist/types/view/LayergeView.vue.d.ts',
     'package.json'

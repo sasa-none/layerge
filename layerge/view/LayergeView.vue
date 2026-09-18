@@ -27,14 +27,14 @@
 import {computed, defineComponent, h, inject, provide, shallowReactive, shallowRef} from 'vue';
 import type {Component, PropType} from 'vue';
 import {RouterView} from 'vue-router';
-import {PresenterContextKey, EntryContextKey, LayergeKey} from '../internals/keys';
+import {PresenterContextKey, EntryContextKey, LayergeKey} from '../internals/keys.js';
 import type {
     LayergeEntryContext,
     LayergeEntryPhase,
     LayergeStore,
     PresenterDefinition,
     PresenterEntry
-} from '../types';
+} from '../types.js';
 
 const $layerge = inject<LayergeStore | null>('$layerge', null) ?? inject(LayergeKey, null);
 

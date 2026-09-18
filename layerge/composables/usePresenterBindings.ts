@@ -2,8 +2,8 @@ import {computed, inject} from 'vue';
 import type {ComputedRef} from 'vue';
 
 import {isNodeDevEnv} from '../internals/env.js';
-import {EntryContextKey} from '../internals/keys';
-import type {LayergeEntryContext} from '../types';
+import {EntryContextKey} from '../internals/keys.js';
+import type {LayergeEntryContext} from '../types.js';
 
 /**
  * usePresenterBindings - Presenter配下のEntryContextをもとに、v-bind用のbindingsを生成します

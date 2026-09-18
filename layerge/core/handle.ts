@@ -1,4 +1,4 @@
-import type {PresenterAsyncResult, PresenterHandleInternal} from '../types';
+import type {PresenterAsyncResult, PresenterHandleInternal} from '../types.js';
 
 /**
  * createPresenterHandle - PresenterHandleInternalを生成します

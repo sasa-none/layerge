@@ -21,8 +21,8 @@
 <script setup lang="ts">
 import {computed, inject, shallowReactive, onBeforeUnmount, onMounted, useAttrs} from 'vue';
 import {isNodeDevEnv} from '../internals/env.js';
-import {EntryContextKey, LayergeKey} from '../internals/keys';
-import type {LayergeEntryContext, LayergeStore} from '../types';
+import {EntryContextKey, LayergeKey} from '../internals/keys.js';
+import type {LayergeEntryContext, LayergeStore} from '../types.js';
 
 defineOptions({
     inheritAttrs: false

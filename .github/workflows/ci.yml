@@ -79,7 +79,7 @@ jobs:
           if-no-files-found: ignore
 
   pack-and-consumers:
-    name: npm pack + consumer build
+    name: npm pack + consumer build / typecheck
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -87,6 +87,9 @@ jobs:
         consumer:
           - consumer-vue-router-4
           - consumer-vue-router-5
+          # 出荷する型定義を利用者と同じ解決方式で検査する（ROADMAP A-19）。
+          # 既存 2 つは vite build のみで .ts を持たないため、型定義は検証されない
+          - consumer-types
     steps:
       - uses: actions/checkout@v4
 
@@ -122,6 +125,12 @@ jobs:
         working-directory: ${{ matrix.consumer }}
         run: pnpm install --ignore-workspace --no-frozen-lockfile
 
+      # consumer-types は build を持たず typecheck を持つ。逆も同じなので
+      # --if-present で両方を試す（どちらか一方は必ず実行される）
       - name: 消費側をビルドする
         working-directory: ${{ matrix.consumer }}
-        run: pnpm build
+        run: pnpm run --if-present build
+
+      - name: 消費側で型検査する
+        working-directory: ${{ matrix.consumer }}
+        run: pnpm run --if-present typecheck

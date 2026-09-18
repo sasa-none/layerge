@@ -1,5 +1,5 @@
 import {__layergeGetBeforeUnloadEnabled} from '../composables/usePresenterLeaveGuard.js';
-import type {LayergeStore} from '../types';
+import type {LayergeStore} from '../types.js';
 
 /**
  * LayergeDevMetrics - dev-only 観測ポイント

@@ -1,0 +1,24 @@
+{
+    // 利用者と同じ解決方式で、出荷する型定義そのものを検査します（ROADMAP A-19）。
+    //
+    // moduleResolution: nodenext + "type": "module" により、package.json の
+    // exports の import 条件（dist/types/index.d.ts）が選ばれます。この経路では
+    // 相対 specifier に拡張子が必須で、欠けていると公開 API が「存在しない」と報告されます。
+    "compilerOptions": {
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM"],
+
+        "strict": true,
+        "noEmit": true,
+
+        // 出荷する .d.ts 自体を検査対象にするため、true にしないでください。
+        // true にすると node_modules の型が素通りし、この検証の意味が失われます。
+        "skipLibCheck": false,
+
+        // @types/* を暗黙に読み込ませない（利用者の環境差を持ち込まないため）
+        "types": []
+    },
+    "include": ["src"]
+}

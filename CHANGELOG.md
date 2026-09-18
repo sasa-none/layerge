@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- The published type definitions now resolve under `moduleResolution: "node16"` / `"nodenext"`. The declarations used extensionless relative specifiers, which ESM resolution rejects, so consumers on that setting were told that `createLayergeRouter`, `useLayerge`, `usePresenter`, `useLayergeLink` and `usePresenterBindings` **did not exist**. Relative specifiers now carry `.js`, and the component declarations are additionally published under the `*.d.vue.ts` name that node16 / nodenext looks for. `moduleResolution: "bundler"` (Vite, webpack) was unaffected and keeps working. The runtime bundles are unchanged — this is a type-only fix. A TypeScript consumer is now type-checked against the packed tarball in CI (`skipLibCheck: false`), so the published types cannot silently regress again.
+
 - Dev diagnostics no longer drop the navigation error when closing a presenter. If URL restore fails during `close()`, the `[Layerge][error]` line now carries the actual error (with its stack) instead of only the outcome summary. Development-only output; no public API change.
 
 - `settled` (and therefore `pushAsync()` / `closeAsync()`) now resolves with a plain status string on failure. Two failure paths previously put the whole internal outcome object into `status`, so `settled` resolved with `{status: {traceId: '...', status: 'failed'}}` instead of `{status: 'failed'}`. Code such as `if (result.status === 'failed')` never matched, which meant **failures could not be detected through the API whose purpose is to report them**. Success paths were unaffected.

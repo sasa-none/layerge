@@ -1,5 +1,5 @@
 import type {InjectionKey} from 'vue';
-import type {LayergeEntryContext, LayergeStore} from '../types';
+import type {LayergeEntryContext, LayergeStore} from '../types.js';
 
 /**
  * PresenterContextKey - Presenter 内で提供されるコンテキストキー

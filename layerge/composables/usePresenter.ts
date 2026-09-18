@@ -1,7 +1,7 @@
 import {inject} from 'vue';
 import type {Ref} from 'vue';
-import {PresenterContextKey} from '../internals/keys';
-import type {PresenterEntry, PresenterHandle} from '../types';
+import {PresenterContextKey} from '../internals/keys.js';
+import type {PresenterEntry, PresenterHandle} from '../types.js';
 
 /**
  * PresenterContextValue - LayergeView が provide する Presenter コンテキストの形

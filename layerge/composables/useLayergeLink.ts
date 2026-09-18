@@ -1,8 +1,8 @@
 import {computed, inject, nextTick, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
 import type {Router} from 'vue-router';
-import {LayergeKey} from '../internals/keys';
-import {usePresenter} from './usePresenter';
+import {LayergeKey} from '../internals/keys.js';
+import {usePresenter} from './usePresenter.js';
 import type {
     LayergeLinkAttrs,
     LayergeLinkHooks,
@@ -13,7 +13,7 @@ import type {
     UseLayergeLinkBindings,
     UseLayergeLinkHandlers,
     UseLayergeLinkResult
-} from '../types';
+} from '../types.js';
 
 /**
  * PresenterApiLike - router に生やされた Presenter API の呼び出し面

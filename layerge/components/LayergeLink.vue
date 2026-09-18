@@ -12,8 +12,8 @@ import type {Component, PropType} from 'vue';
 import {useRouter} from 'vue-router';
 import type {RouteLocationRaw} from 'vue-router';
 import {isNodeDevEnv} from '../internals/env.js';
-import {LayergeKey} from '../internals/keys';
-import type {LayergeStore, PresenterHandle, PresenterTarget} from '../types';
+import {LayergeKey} from '../internals/keys.js';
+import type {LayergeStore, PresenterHandle, PresenterTarget} from '../types.js';
 
 /**
  * PresenterApiLike - router に生やされた Presenter API の呼び出し面

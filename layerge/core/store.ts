@@ -1,5 +1,5 @@
 import {markRaw, reactive} from 'vue';
-import type {LayergeInvoker, LayergeStore, PresenterDefinition} from '../types';
+import type {LayergeInvoker, LayergeStore, PresenterDefinition} from '../types.js';
 
 /**
  * createLayergeStore - Layergeの内部状態を管理するリアクティブストアを作成します

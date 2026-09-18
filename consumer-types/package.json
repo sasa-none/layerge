@@ -1,0 +1,16 @@
+{
+    "name": "consumer-types",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "layerge": "file:../layerge.tgz",
+        "vue": "^3.5.35",
+        "vue-router": "^4.6.3"
+    },
+    "devDependencies": {
+        "typescript": "^6.0.3"
+    }
+}

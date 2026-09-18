@@ -4,14 +4,14 @@ import {
     __layergeRunPresenterLeaveGuard,
     __layergeSubscribeBeforeUnload
 } from '../composables/usePresenterLeaveGuard.js';
-import {createLayergeStore} from '../core/store';
-import {createPresenterHandle} from '../core/handle';
-import {createId} from '../core/id';
+import {createLayergeStore} from '../core/store.js';
+import {createPresenterHandle} from '../core/handle.js';
+import {createId} from '../core/id.js';
 import {createInternalOutcome, projectOutcomeToPublic} from '../internals/outcome.js';
 import type {LayergeOutcomePublic, OutcomeInternalStatus, OutcomeStage} from '../internals/outcome.js';
 import {createDecisionTraceStore, MAX_TRACES_DEFAULT} from '../internals/decisionTrace.js';
 import type {DecisionTrace} from '../internals/decisionTrace.js';
-import {LayergeKey} from '../internals/keys';
+import {LayergeKey} from '../internals/keys.js';
 import LayergeView from '../view/LayergeView.vue';
 import LayergeTransition from '../view/LayergeTransition.vue';
 import type {Component} from 'vue';
@@ -27,7 +27,7 @@ import type {
     PresenterKind,
     PresenterMap,
     PresenterPushReplaceOptions
-} from '../types';
+} from '../types.js';
 
 /**
  * installedApps - インストール済みのVueアプリケーションを追跡するWeakSet
@@ -125,9 +125,9 @@ const isDevEnv = (): boolean => {
  * @param options - オプション
  * @throws {Error} オプション不正やルート解決・Presenter定義の不整合が発生した場合にスローします
  * @returns {import('vue-router').Router&{
- *  $layerge:import('../core/store').LayergeStore,
+ *  $layerge:import('../core/store.js').LayergeStore,
  *  exitPresenterMode:() => void,
- *  getLayergeState:() => {mode:import('../types').LayergeMode, depth:number}
+ *  getLayergeState:() => {mode:import('../types.js').LayergeMode, depth:number}
  * }} 拡張ルータ
  */
 const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
@@ -1015,7 +1015,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @param entryId - 対象 entryId
      * @returns invoker（存在しない場合 null）
      */
-    const getInvokerInternal = (entryId: string): import('../types').LayergeInvoker | null => {
+    const getInvokerInternal = (entryId: string): import('../types.js').LayergeInvoker | null => {
         try {
             return $layerge._invokers.get(entryId) ?? null;
         } catch {
@@ -1262,7 +1262,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @returns
      */
     const moveEntryToLeaving = (
-        entry: import('../types').PresenterEntry,
+        entry: import('../types.js').PresenterEntry,
         leavingIndex: number,
         leavingDepth: number
     ): void => {
@@ -1331,7 +1331,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     const closeByIdInternalAsync = async (
         id: string,
         options?: {restoreUrl?: boolean} | undefined
-    ): Promise<import('../types').PresenterAsyncResult> => {
+    ): Promise<import('../types.js').PresenterAsyncResult> => {
         const traceId = createId('trace');
 
         try {
@@ -1705,7 +1705,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @param id - エントリID
      * @returns ハンドル
      */
-    const buildHandle = (id: string): import('../types').PresenterHandleInternal => {
+    const buildHandle = (id: string): import('../types.js').PresenterHandleInternal => {
         return createPresenterHandle(id, () => {
             closeByIdInternal(id, undefined);
         });
@@ -1714,11 +1714,11 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     /**
      * commitEntry - Presenter エントリを確定します（背景はここでは触らない）
      * @param {string} presenterName - 登録名
-     * @param {import('../types').PresenterKind} kind - 種別
+     * @param {import('../types.js').PresenterKind} kind - 種別
      * @param {import('vue-router').RouteLocationNormalizedLoaded} route - 実際に到達したルート
-     * @param {import('../types').PresenterHandleInternal} handle - ハンドル
+     * @param {import('../types.js').PresenterHandleInternal} handle - ハンドル
      * @param {import('vue').Component|null} viewComponent - 表示用コンポーネント（RouteLocationRaw の場合は null）
-     * @param {import('../types').PresenterKind} navType - close 時に適用するナビ種別（URL を動かした場合のみ push/replace）
+     * @param {import('../types.js').PresenterKind} navType - close 時に適用するナビ種別（URL を動かした場合のみ push/replace）
      * @param {string|null} returnTo - replace-close の戻り先（from.fullPath）。不要な場合は null。
      * @param mountOptions
      * @param mountOptions.preMounted
@@ -1831,7 +1831,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @returns loader関数の場合true（型ガード）
      */
     const isLoaderTarget = (target: unknown): target is () => Promise<import('vue').Component> => {
-        // v1.x: loader は「引数なし関数」を想定（() => import('...')）
+        // v1.x: loader は「引数なし関数」を想定（() => import('....js')）
         return typeof target === 'function' && target.length === 0;
     };
 
@@ -1840,7 +1840,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @param target - 正規化対象のtarget（PresenterTarget型）
      * @returns 描画用コンポーネント（RouteLocationRawの場合はnull）
      */
-    const toViewComponent = (target: import('../types').PresenterTarget): import('vue').Component | null => {
+    const toViewComponent = (
+        target: import('../types.js').PresenterTarget
+    ): import('vue').Component | null => {
         if (isRouteTarget(target)) {
             return null;
         }
@@ -1872,7 +1874,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * ensureKeptArray - keepMounted 用の保持配列を初期化します
      * @returns kept 配列
      */
-    const ensureKeptArray = (): import('../types').PresenterEntry[] => {
+    const ensureKeptArray = (): import('../types.js').PresenterEntry[] => {
         if (!Array.isArray($layerge._kept)) {
             $layerge._kept = [];
         }
@@ -1888,7 +1890,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @returns 再利用キー
      */
     const buildKeepKey = (
-        target: import('../types').PresenterTarget,
+        target: import('../types.js').PresenterTarget,
         resolvedRoute: import('vue-router').RouteLocationNormalizedLoaded,
         viewComponent: import('vue').Component | null
     ): string => {
@@ -1925,7 +1927,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         viewComponent: import('vue').Component | null,
         keepKey: string,
         mountOptions: {preMounted: boolean; keepMounted: boolean}
-    ): import('../types').PresenterHandleInternal | null => {
+    ): import('../types.js').PresenterHandleInternal | null => {
         if (kind !== 'open') {
             return null;
         }
@@ -1994,13 +1996,13 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      */
     const presenterNavigate = (
         presenterName: string,
-        kind: import('../types').PresenterKind,
-        target: import('../types').PresenterTarget,
+        kind: import('../types.js').PresenterKind,
+        target: import('../types.js').PresenterTarget,
         options:
-            | import('../types').PresenterPushReplaceOptions
-            | import('../types').PresenterOpenOptions
+            | import('../types.js').PresenterPushReplaceOptions
+            | import('../types.js').PresenterOpenOptions
             | undefined
-    ): import('../types').PresenterHandle => {
+    ): import('../types.js').PresenterHandle => {
         assertPresenterRegistered(presenterName);
 
         // v1.x: 最新操作が勝つ

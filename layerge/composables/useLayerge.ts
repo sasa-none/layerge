@@ -1,6 +1,6 @@
 import {inject} from 'vue';
-import {LayergeKey} from '../internals/keys';
-import type {LayergeMode, LayergeStore} from '../types';
+import {LayergeKey} from '../internals/keys.js';
+import type {LayergeMode, LayergeStore} from '../types.js';
 
 /**
  * useLayerge - Layergeの全体APIを取得します

@@ -70,7 +70,7 @@
     },
     "scripts": {
         "build": "vite build && pnpm build:types",
-        "build:types": "vue-tsc -p tsconfig.build.json && node scripts/emit-cts-types.mjs",
+        "build:types": "vue-tsc -p tsconfig.build.json && node scripts/emit-cts-types.mjs && node scripts/emit-vue-types.mjs",
         "prepublishOnly": "npm run build",
         "demo:dev": "pnpm -C demo dev",
         "demo:build": "pnpm -C demo build",
