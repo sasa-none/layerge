@@ -1,35 +1,42 @@
 import {computed, onBeforeUnmount, unref, watchEffect} from 'vue';
+import type {ComputedRef, Ref} from 'vue';
 import {usePresenter} from './usePresenter.js';
+
+/**
+ * LeaveGuardRecord - Presenter 単位で保持する離脱ガード情報
+ */
+interface LeaveGuardRecord {
+    /** 編集有無 */
+    dirty: Ref<boolean> | boolean;
+    /** 処理中 */
+    pending: Ref<boolean> | boolean;
+    /** pending=true の close 時に待つ Promise */
+    commit?: (() => Promise<void>) | undefined;
+    /** 既定 confirm に渡すメッセージ */
+    message?: string | undefined;
+    /** dirty=true の close 時に呼び出す確認 */
+    confirm?: ((ctx: {entryId: string; reason: string}) => boolean | Promise<boolean>) | undefined;
+}
 
 /**
  * _registry - Presenter単位の離脱ガード情報を保持します
  * - usePresenterLeaveGuard() を使用したentryのみが登録されます
  * - Layergeコアは dirty / pending 状態を保持しません（Presenter責務）
- * @type {Map<string, {
- *  dirty: import('vue').Ref<boolean>|boolean,
- *  pending: import('vue').Ref<boolean>|boolean,
- *  commit?: (() => Promise<void>)|undefined,
- *  message?: string|undefined,
- *  confirm?: ((ctx:{entryId:string, reason:string}) => (boolean|Promise<boolean>))|undefined
- * }>}
  */
-const _registry = new Map();
+const _registry = new Map<string, LeaveGuardRecord>();
 
 /**
  * _beforeUnloadCount - beforeunload を有効化すべき entry 数
- * @type {number}
  */
 let _beforeUnloadCount = 0;
 
-/** @type {Set<(needed: boolean) => void>} */
-const _beforeUnloadListeners = new Set();
+const _beforeUnloadListeners = new Set<(needed: boolean) => void>();
 
 /**
  * notifyBeforeUnloadMaybe - beforeunload の必要性変化を通知します
- * @param {number} next - 次のカウント
- * @returns {void}
+ * @param next - 次のカウント
  */
-const notifyBeforeUnloadMaybe = (next) => {
+const notifyBeforeUnloadMaybe = (next: number): void => {
     const prevNeeded = _beforeUnloadCount > 0;
     const nextNeeded = next > 0;
 
@@ -50,10 +57,10 @@ const notifyBeforeUnloadMaybe = (next) => {
 
 /**
  * __layergeSubscribeBeforeUnload - INTERNAL: beforeunload の必要性変化を購読します
- * @param {(needed: boolean) => void} listener - listener
- * @returns {() => void} unsubscribe
+ * @param listener - listener
+ * @returns unsubscribe
  */
-export const __layergeSubscribeBeforeUnload = (listener) => {
+export const __layergeSubscribeBeforeUnload = (listener: (needed: boolean) => void): (() => void) => {
     _beforeUnloadListeners.add(listener);
 
     try {
@@ -69,9 +76,9 @@ export const __layergeSubscribeBeforeUnload = (listener) => {
 
 /**
  * __layergeGetBeforeUnloadEnabled - INTERNAL: beforeunload が必要な状態かを取得します
- * @returns {boolean} 有効な場合 true
+ * @returns 有効な場合 true
  */
-export const __layergeGetBeforeUnloadEnabled = () => {
+export const __layergeGetBeforeUnloadEnabled = (): boolean => {
     return _beforeUnloadCount > 0;
 };
 
@@ -79,10 +86,18 @@ export const __layergeGetBeforeUnloadEnabled = () => {
  * __layergeRunPresenterLeaveGuard - INTERNAL: close直前にPresenterの離脱ガードを実行します
  * - dirty=true の場合は confirm を要求できます
  * - pending=true の場合は commit（Promise）を待つことができます
- * @param {{entryId: string, reason: string}} args - args
- * @returns {Promise<boolean>} true: close 続行, false: close 中止
+ * @param args - args
+ * @param args.entryId - 対象 entryId
+ * @param args.reason - 呼び出し理由
+ * @returns true: close 続行, false: close 中止
  */
-export const __layergeRunPresenterLeaveGuard = async ({entryId, reason}) => {
+export const __layergeRunPresenterLeaveGuard = async ({
+    entryId,
+    reason
+}: {
+    entryId: string;
+    reason: string;
+}): Promise<boolean> => {
     const rec = _registry.get(entryId);
 
     if (!rec) {
@@ -130,10 +145,10 @@ export const __layergeRunPresenterLeaveGuard = async ({entryId, reason}) => {
 
 /**
  * __layergeHasPresenterLeaveGuard - INTERNAL: entryId に leaveGuard が登録されているか
- * @param {string} entryId - entryId
- * @returns {boolean} registered
+ * @param entryId - entryId
+ * @returns registered
  */
-export const __layergeHasPresenterLeaveGuard = (entryId) => {
+export const __layergeHasPresenterLeaveGuard = (entryId: string): boolean => {
     return _registry.has(entryId);
 };
 
@@ -146,16 +161,27 @@ export const __layergeHasPresenterLeaveGuard = (entryId) => {
  * - confirm: dirty=true の close 時に呼び出す確認（Presenter責務）
  *
  * Layergeは confirm UI を提供しません。
- * @param {{
- *  dirty?: import('vue').Ref<boolean>|boolean,
- *  pending?: import('vue').Ref<boolean>|boolean,
- *  commit?: (() => Promise<void>)|undefined,
- *  message?: string,
- *  confirm?: (ctx:{entryId:string, reason:string}) => (boolean|Promise<boolean>)
- * }} [opts] - opts
- * @returns {{entryId: import('vue').ComputedRef<string|null>, dirty: import('vue').Ref<boolean>|boolean, pending: import('vue').Ref<boolean>|boolean}}
+ * @param opts - opts
+ * @param opts.dirty - 編集有無
+ * @param opts.pending - 処理中
+ * @param opts.commit - pending=true の close 時に待つ Promise
+ * @param opts.message - 既定 confirm に渡すメッセージ
+ * @param opts.confirm - dirty=true の close 時に呼び出す確認
+ * @returns entryId と、渡された dirty / pending
  */
-export const usePresenterLeaveGuard = (opts = {}) => {
+export const usePresenterLeaveGuard = (
+    opts: {
+        dirty?: Ref<boolean> | boolean;
+        pending?: Ref<boolean> | boolean;
+        commit?: (() => Promise<void>) | undefined;
+        message?: string;
+        confirm?: (ctx: {entryId: string; reason: string}) => boolean | Promise<boolean>;
+    } = {}
+): {
+    entryId: ComputedRef<string | null>;
+    dirty: Ref<boolean> | boolean;
+    pending: Ref<boolean> | boolean;
+} => {
     const presenter = usePresenter();
     const entryId = computed(() => {
         return presenter && presenter.entry ? presenter.entry.id : null;
@@ -164,7 +190,7 @@ export const usePresenterLeaveGuard = (opts = {}) => {
     const dirty = opts.dirty !== undefined ? opts.dirty : false;
     const pending = opts.pending !== undefined ? opts.pending : false;
 
-    const rec = {
+    const rec: LeaveGuardRecord = {
         dirty: dirty,
         pending: pending,
         commit: opts.commit,
@@ -172,13 +198,11 @@ export const usePresenterLeaveGuard = (opts = {}) => {
         confirm: opts.confirm
     };
 
-    /** @type {string|null} */
-    let lastId = null;
+    let lastId: string | null = null;
 
-    /** @type {boolean} */
     let lastBeforeUnloadNeed = false;
 
-    const cleanup = () => {
+    const cleanup = (): void => {
         if (lastId === null) {
             return;
         }

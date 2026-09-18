@@ -333,6 +333,32 @@ JSDoc 規約は `any` を原則禁止としていますが、`createLayergeRoute
 
 TypeScript 化にあたっては `isRouteTarget` 相当を**型ガード（`x is RouteLocationRaw`）として実装する**必要があります。ここが素直に書けるかどうかは、やってみないと分かりません。
 
+### 6-5. Vue / vue-router の型と衝突する既知パターン（2026-09-18 追記）
+
+段階 3 で実際に遭遇したパターンを記録します。**段階 5 でも同種の衝突が起きます。**毎回調べ直さずに済むよう残します。
+
+#### `reactive()` の深いアンラップとの衝突
+
+`reactive<LayergeStore>({...})` と素直に書くと型エラーになります。`reactive` の戻り値型 `UnwrapNestedRefs<T>` が vue-router の `RouteLocationNormalizedLoaded` を深く展開し、`matched[].redirect` の構造が元の型と一致しなくなるためです（`Type 'unknown' is not assignable to type 'undefined'` まで降りていく長いエラーになります）。実行時に `markRaw` していても、型レベルの展開は止まりません。
+
+**採用した書き方（段階 3 / `core/store.ts`）:**
+
+```ts
+const initial: LayergeStore = { /* ... */ };
+return reactive(initial) as LayergeStore;
+```
+
+**この書き方が安全である理由を明記しておきます。**型注釈が `initial`（= `reactive` への入力）側にあるため、**プロパティの過不足と型の誤りはそこで検査されます。**`as` が無効化しているのは `UnwrapNestedRefs` という型変換だけで、実体の検査ではありません。
+
+**やってはいけない書き方:**
+
+```ts
+return reactive({ /* ... */ }) as LayergeStore;   // 入力が無検査になる
+return reactive({ /* ... */ }) as any;            // 論外
+```
+
+入力側の注釈を省くと、フィールドを書き間違えても通ってしまいます。**注釈は必ず入力側に置いてください。**
+
 ### 6-4. `$layerge` ストアの内部メンバーの露出
 
 `LayergeStore` は `_exitPresenterMode` / `_closeTop` などアンダースコア接頭辞の内部メンバーを持ち、現在は `/** @internal */` で注釈されています。

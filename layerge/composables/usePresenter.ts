@@ -1,25 +1,40 @@
 import {inject} from 'vue';
+import type {Ref} from 'vue';
 import {PresenterContextKey} from '../internals/keys';
+import type {PresenterEntry, PresenterHandle} from '../types';
+
+/**
+ * PresenterContextValue - LayergeView が provide する Presenter コンテキストの形
+ *
+ * PresenterContextKey は InjectionKey<unknown> のため、受け取り側で形を与えます。
+ */
+interface PresenterContextValue {
+    handle?: PresenterHandle;
+    entry?: PresenterEntry | null;
+    isTop?: boolean;
+}
 
 /**
  * usePresenter - Presenterコンテキストを取得します
  * - Presenter上ならhandle/entry/isTopを返します
  * - Page上ならno-opを返します（分岐不要）
- * @returns {{handle:import('../types').PresenterHandle,entry:import('../types').PresenterEntry|null,isTop:boolean}} Presenterハンドル、エントリ情報、最上位判定を含むPresenterコンテキストオブジェクト
+ * @returns Presenterハンドル、エントリ情報、最上位判定を含むPresenterコンテキストオブジェクト
  */
-const usePresenter = () => {
-    const ctxRef = inject(PresenterContextKey, null);
+const usePresenter = (): {handle: PresenterHandle; entry: PresenterEntry | null; isTop: boolean} => {
+    const ctxRef = inject(PresenterContextKey, null) as Ref<PresenterContextValue | null> | null;
 
     /**
      * noopHandle - Presenterコンテキストが存在しない場合のデフォルトハンドル
+     *
+     * NOTE: PresenterHandle は settled を宣言していますが、この no-op は保持しません。
+     * 移行前からの挙動であるため、ここでは変更せずキャストで維持します。
      * @constant
-     * @type {import('../types').PresenterHandle}
      */
     const noopHandle = {
         close: () => {},
         closed: Promise.resolve(),
         isActive: false
-    };
+    } as PresenterHandle;
 
     return {
         get handle() {

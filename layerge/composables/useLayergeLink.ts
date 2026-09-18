@@ -1,18 +1,56 @@
 import {computed, inject, nextTick, ref, watch} from 'vue';
 import {useRouter} from 'vue-router';
+import type {Router} from 'vue-router';
 import {LayergeKey} from '../internals/keys';
 import {usePresenter} from './usePresenter';
+import type {
+    LayergeLinkAttrs,
+    LayergeLinkHooks,
+    LayergeStore,
+    PresenterEntry,
+    PresenterHandle,
+    PresenterTarget,
+    UseLayergeLinkBindings,
+    UseLayergeLinkHandlers,
+    UseLayergeLinkResult
+} from '../types';
+
+/**
+ * PresenterApiLike - router に生やされた Presenter API の呼び出し面
+ *
+ * Router 型は Presenter 名のインデックスを持たないため、参照側で形を与えます。
+ */
+interface PresenterApiLike {
+    open?: (to: PresenterTarget) => PresenterHandle;
+    push?: (to: PresenterTarget) => PresenterHandle;
+    replace?: (to: PresenterTarget) => PresenterHandle;
+}
+
+/**
+ * HandleWithInternals - PresenterHandle に実装が付加している内部プロパティ
+ *
+ * いずれも公開型には現れません。移行前から duck typing で参照しているため、
+ * 挙動を変えずに読み出せるよう任意プロパティとして表現します。
+ */
+interface HandleWithInternals extends PresenterHandle {
+    _id?: string;
+    entryId?: string;
+    _navPromise?: Promise<unknown>;
+}
 
 /**
  * resolvePresenterName - presenter 名を決定します
  * - Presenter 上では entry.presenterName を優先します
  * - Page 上では modal があれば modal を優先します
  * - それ以外は presenters の先頭キーを使用します
- * @param {import('../types').LayergeStore|null} $layerge - Layergeストア
- * @param {import('../types').PresenterEntry|null} currentEntry - 現在のPresenterエントリ
- * @returns {string|null} presenter 名（決定できない場合は null）
+ * @param $layerge - Layergeストア
+ * @param currentEntry - 現在のPresenterエントリ
+ * @returns presenter 名（決定できない場合は null）
  */
-const resolvePresenterName = ($layerge, currentEntry) => {
+const resolvePresenterName = (
+    $layerge: LayergeStore | null,
+    currentEntry: PresenterEntry | null
+): string | null => {
     if ($layerge && currentEntry && typeof currentEntry.presenterName === 'string') {
         return currentEntry.presenterName;
     }
@@ -36,12 +74,15 @@ const resolvePresenterName = ($layerge, currentEntry) => {
 
 /**
  * safeCallHook - hooks を安全に呼び出します
- * @param {import('../types').LayergeLinkHooks|undefined|null} hooks - hooks
- * @param {keyof import('../types').LayergeLinkHooks} key - hook名
- * @param {unknown[]} args - 引数
- * @returns {void}
+ * @param hooks - hooks
+ * @param key - hook名
+ * @param args - 引数
  */
-const safeCallHook = (hooks, key, args) => {
+const safeCallHook = (
+    hooks: LayergeLinkHooks | undefined | null,
+    key: keyof LayergeLinkHooks,
+    args: unknown[]
+): void => {
     if (!hooks) {
         return;
     }
@@ -53,7 +94,8 @@ const safeCallHook = (hooks, key, args) => {
     }
 
     try {
-        fn(...args);
+        // hook ごとに引数の形が異なるため、呼び出し面は可変長として扱う
+        (fn as (...hookArgs: unknown[]) => void)(...args);
     } catch (e) {
         // hooks 例外で Layerge 本体を壊さない（凍結仕様）
         console.warn('[Layerge][useLayergeLink] hook error', key, e);
@@ -62,11 +104,11 @@ const safeCallHook = (hooks, key, args) => {
 
 /**
  * resolveInvokerElement - invoker に使用する DOM を決定します
- * @param {HTMLElement|null} refEl - ref で捕捉した要素
- * @param {unknown} event - click/keydown イベント
- * @returns {HTMLElement|null} DOM
+ * @param refEl - ref で捕捉した要素
+ * @param event - click/keydown イベント
+ * @returns DOM
  */
-const resolveInvokerElement = (refEl, event) => {
+const resolveInvokerElement = (refEl: HTMLElement | null, event: unknown): HTMLElement | null => {
     if (event && typeof event === 'object' && 'currentTarget' in event) {
         const t = event.currentTarget;
 
@@ -84,11 +126,11 @@ const resolveInvokerElement = (refEl, event) => {
 
 /**
  * findEntryById - stack / leaving から entryId を探します
- * @param {import('../types').LayergeStore} $layerge - Layergeストア
- * @param {string} entryId - entryId
- * @returns {import('../types').PresenterEntry|null} entry
+ * @param $layerge - Layergeストア
+ * @param entryId - entryId
+ * @returns entry
  */
-const findEntryById = ($layerge, entryId) => {
+const findEntryById = ($layerge: LayergeStore, entryId: string): PresenterEntry | null => {
     const inStack = $layerge.stack.find((x) => x.id === entryId);
 
     if (inStack) {
@@ -106,10 +148,10 @@ const findEntryById = ($layerge, entryId) => {
 
 /**
  * inferEntryIdFromState - 直近の open 操作で作られた entryId を推測します
- * @param {import('../types').LayergeStore} $layerge - Layergeストア
- * @returns {string|null} entryId
+ * @param $layerge - Layergeストア
+ * @returns entryId
  */
-const inferEntryIdFromState = ($layerge) => {
+const inferEntryIdFromState = ($layerge: LayergeStore): string | null => {
     // push/replace で URL を動かす場合は pending に id が存在する
     if ($layerge.pending && typeof $layerge.pending.id === 'string') {
         return $layerge.pending.id;
@@ -129,26 +171,34 @@ const inferEntryIdFromState = ($layerge) => {
  * useLayergeLink - RouterLink風の導線を composable として提供します
  * - invoker（entryId ↔ trigger DOM）を自動登録します
  * - hooks で opened/entered/closed 等を通知します（通知型・Promiseなし）
- * @param {import('../types').PresenterTarget} to - 遷移先（RouteLocationRaw | Component | loader）
- * @param {(() => import('../types').LayergeLinkAttrs)|undefined} [computeAttrs] - attrs 算出関数（任意）
- * @param {import('../types').LayergeLinkHooks|{hooks: import('../types').LayergeLinkHooks}|undefined} [hooks] - hooks（通知型）
- * @returns {import('../types').UseLayergeLinkResult} bindings と handlers
+ * @param to - 遷移先（RouteLocationRaw | Component | loader）
+ * @param computeAttrs - attrs 算出関数（任意）
+ * @param hooks - hooks（通知型）
+ * @returns bindings と handlers
  */
-const useLayergeLink = (to, computeAttrs, hooks) => {
+const useLayergeLink = (
+    to: PresenterTarget,
+    computeAttrs?: (() => LayergeLinkAttrs) | undefined,
+    hooks?: LayergeLinkHooks | {hooks: LayergeLinkHooks} | undefined
+): UseLayergeLinkResult => {
     const router = useRouter();
     // In many apps, Layerge store is provided via injection.
     // But demo / lightweight setups may not provide it.
     // v2: allow fallback to router.$layerge so useLayergeLink works out-of-the-box.
-    const $layerge = inject(LayergeKey, null) ?? inject('$layerge', null) ?? router?.$layerge ?? null;
+    const routerWithLayerge = router as Router & {$layerge?: LayergeStore | null};
+    const $layerge =
+        inject(LayergeKey, null) ??
+        inject<LayergeStore | null>('$layerge', null) ??
+        routerWithLayerge?.$layerge ??
+        null;
     const presenterCtx = usePresenter();
 
     /**
      * normalizedHooks - 第3引数の互換性を吸収した hooks
      * - v2標準: useLayergeLink(to, computeAttrs, hooks)
      * - 互換: useLayergeLink(to, computeAttrs, {hooks})
-     * @type {import('../types').LayergeLinkHooks|undefined}
      */
-    const normalizedHooks =
+    const normalizedHooks: LayergeLinkHooks | undefined =
         hooks &&
         typeof hooks === 'object' &&
         hooks !== null &&
@@ -156,37 +206,32 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
         hooks.hooks &&
         typeof hooks.hooks === 'object'
             ? hooks.hooks
-            : hooks;
+            : (hooks as LayergeLinkHooks | undefined);
 
     /**
      * elRef - trigger DOM を捕捉します
-     * @type {import('vue').Ref<HTMLElement|null>}
      */
-    const elRef = ref(null);
+    const elRef = ref<HTMLElement | null>(null);
 
     /**
      * opToken - 最新操作のトークン（latest-winsの無害化）
-     * @type {import('vue').Ref<number>}
      */
     const opToken = ref(0);
 
     /**
      * currentEntryId - 直近の open によって生成された entryId
-     * @type {import('vue').Ref<string|null>}
      */
-    const currentEntryId = ref(null);
+    const currentEntryId = ref<string | null>(null);
 
     /**
      * stopPhaseWatch - phase監視の解除関数
-     * @type {(() => void)|null}
      */
-    let stopPhaseWatch = null;
+    let stopPhaseWatch: (() => void) | null = null;
 
     /**
      * clearPhaseWatch - phase監視を解除します
-     * @returns {void}
      */
-    const clearPhaseWatch = () => {
+    const clearPhaseWatch = (): void => {
         if (stopPhaseWatch) {
             stopPhaseWatch();
             stopPhaseWatch = null;
@@ -195,11 +240,10 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
 
     /**
      * startPhaseWatch - phase 変化で entered/beforeClose を通知します
-     * @param {string} entryId - 対象 entryId
-     * @param {number} token - 操作トークン
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @param token - 操作トークン
      */
-    const startPhaseWatch = (entryId, token) => {
+    const startPhaseWatch = (entryId: string, token: number): void => {
         if (!$layerge) {
             return;
         }
@@ -235,11 +279,10 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
 
     /**
      * openInternal - open/push/replace の共通処理
-     * @param {'open'|'push'|'replace'} kind - 種別
-     * @param {unknown} [event] - イベント
-     * @returns {void}
+     * @param kind - 種別
+     * @param event - イベント
      */
-    const openInternal = (kind, event) => {
+    const openInternal = (kind: 'open' | 'push' | 'replace', event?: unknown): void => {
         opToken.value += 1;
         const token = opToken.value;
 
@@ -262,7 +305,7 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
             return;
         }
 
-        const api = router[presenterName];
+        const api = (router as unknown as Record<string, PresenterApiLike | undefined>)[presenterName];
 
         if (!api || typeof api[kind] !== 'function') {
             safeCallHook(normalizedHooks, 'openFailed', [
@@ -272,11 +315,9 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
             return;
         }
 
-        /** @type {HTMLElement|null} */
-        const invokerEl = resolveInvokerElement(elRef.value, event);
+        const invokerEl: HTMLElement | null = resolveInvokerElement(elRef.value, event);
 
-        /** @type {import('../types').PresenterHandle|null} */
-        let handle = null;
+        let handle: HandleWithInternals | null = null;
 
         try {
             handle = api[kind](to);
@@ -288,14 +329,13 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
 
         /**
          * commitSuccess - open が成功した後の共通処理
-         * @returns {void}
          */
-        const commitSuccess = () => {
+        const commitSuccess = (): void => {
             const entryId =
                 handle && (handle._id || handle.entryId)
                     ? handle._id || handle.entryId
                     : inferEntryIdFromState($layerge);
-            currentEntryId.value = entryId;
+            currentEntryId.value = entryId ?? null;
 
             if (entryId && invokerEl && typeof $layerge._setInvoker === 'function') {
                 $layerge._setInvoker(entryId, invokerEl);
@@ -391,11 +431,9 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
 
     /**
      * bindings - DOM 向け bindings
-     * @type {import('vue').ComputedRef<import('../types').UseLayergeLinkBindings>}
      */
-    const bindingsComputed = computed(() => {
-        /** @type {import('../types').LayergeLinkAttrs} */
-        let attrs = {};
+    const bindingsComputed = computed<UseLayergeLinkBindings>(() => {
+        let attrs: LayergeLinkAttrs = {};
 
         if (typeof computeAttrs === 'function') {
             try {
@@ -416,9 +454,8 @@ const useLayergeLink = (to, computeAttrs, hooks) => {
 
     /**
      * handlers - 明示的な操作用ハンドラ
-     * @type {import('../types').UseLayergeLinkHandlers}
      */
-    const handlers = {
+    const handlers: UseLayergeLinkHandlers = {
         open: (event) => {
             openInternal('open', event);
         },

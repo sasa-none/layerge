@@ -1,12 +1,19 @@
 import {inject} from 'vue';
 import {LayergeKey} from '../internals/keys';
+import type {LayergeMode, LayergeStore} from '../types';
 
 /**
  * useLayerge - Layergeの全体APIを取得します
- * @returns {{mode:string,depth:number,closeTop:(options?:{restoreUrl?:boolean}) => void,closeAll:(options?:{restoreUrl?:boolean}) => void,exit:() => void}} 現在のモード、深さ、操作用メソッドを含むLayergeの外部公開APIオブジェクト
+ * @returns 現在のモード、深さ、操作用メソッドを含むLayergeの外部公開APIオブジェクト
  */
-const useLayerge = () => {
-    const $layerge = inject(LayergeKey, null) ?? inject('$layerge', null);
+const useLayerge = (): {
+    mode: LayergeMode;
+    depth: number;
+    closeTop: (options?: {restoreUrl?: boolean}) => void;
+    closeAll: (options?: {restoreUrl?: boolean}) => void;
+    exit: () => void;
+} => {
+    const $layerge = inject(LayergeKey, null) ?? inject<LayergeStore | null>('$layerge', null);
 
     // LayergeStoreが注入されていない場合、デフォルト値を返す（Layerge未使用時の安全な動作保証）
     if (!$layerge) {
