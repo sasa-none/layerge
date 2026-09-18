@@ -8,25 +8,84 @@ import {createLayergeStore} from '../core/store';
 import {createPresenterHandle} from '../core/handle';
 import {createId} from '../core/id';
 import {createInternalOutcome, projectOutcomeToPublic} from '../internals/outcome.js';
+import type {LayergeOutcomePublic, OutcomeInternalStatus, OutcomeStage} from '../internals/outcome.js';
 import {createDecisionTraceStore, MAX_TRACES_DEFAULT} from '../internals/decisionTrace.js';
 import {LayergeKey} from '../internals/keys';
 import LayergeView from '../view/LayergeView.vue';
 import LayergeTransition from '../view/LayergeTransition.vue';
+import type {Component} from 'vue';
+import type {RouteLocationNormalizedLoaded} from 'vue-router';
+import type {
+    CreateLayergeRouterOptions,
+    LayergeControlledHookContext,
+    LayergeRouter,
+    PendingPresenterNav,
+    PresenterHandleInternal,
+    PresenterKind,
+    PresenterAsyncResult,
+    PresenterMap,
+    PresenterPushReplaceOptions
+} from '../types';
 
 /**
  * installedApps - インストール済みのVueアプリケーションを追跡するWeakSet
  * @constant
  * @type {WeakSet<object>}
  */
+/**
+ * ProcessLike - NODE_ENV / LAYERGE_DECISION_TRACE_LEVEL の読み取りに必要な最小形
+ *
+ * ライブラリは Node の型定義に依存しないため、globalThis からの取り出しに用います。
+ */
+interface ProcessLike {
+    env?: Record<string, string | undefined>;
+}
+
+/**
+ * GlobalLike - globalThis 経由で参照するホスト側の値
+ */
+interface GlobalLike {
+    process?: ProcessLike;
+    __LAYERGE_DECISION_TRACE_LEVEL?: unknown;
+}
+
+/**
+ * ImportMetaLike - import.meta.env（バンドラが注入する）を読むための形
+ */
+interface ImportMetaLike {
+    env?: Record<string, string | undefined>;
+}
+
+/**
+ * PendingWithTrace - pending に dev-only の trace 情報を加えた形
+ *
+ * PendingPresenterNav（types.ts）は traceId / traceSettled を宣言していませんが、
+ * 実装は v4.0 の DecisionTrace 用に保持しています。公開型には出ないため、
+ * ここでは実装ファイル内の交差型として扱います。
+ */
+type PendingWithTrace = PendingPresenterNav & {
+    traceId?: string;
+    traceSettled?: boolean;
+};
+
+/**
+ * HandleWithNav - handle にナビゲーション完了 Promise を加えた形
+ *
+ * PresenterHandleInternal には現れない内部プロパティです。
+ */
+type HandleWithNav = PresenterHandleInternal & {
+    _navPromise?: Promise<unknown>;
+};
+
 const installedApps = new WeakSet();
 
 /**
  * isDevEnv - 開発環境かどうかを推定します
- * @returns {boolean} 開発環境の場合true、本番環境の場合false
+ * @returns 開発環境の場合true、本番環境の場合false
  */
-const isDevEnv = () => {
+const isDevEnv = (): boolean => {
     try {
-        const process = typeof globalThis !== 'undefined' ? globalThis.process : undefined;
+        const process = typeof globalThis !== 'undefined' ? (globalThis as GlobalLike).process : undefined;
 
         if (process && process.env && typeof process.env.NODE_ENV === 'string') {
             return process.env.NODE_ENV !== 'production';
@@ -38,10 +97,10 @@ const isDevEnv = () => {
     try {
         if (
             typeof import.meta !== 'undefined' &&
-            import.meta.env &&
-            typeof import.meta.env.MODE === 'string'
+            (import.meta as ImportMetaLike).env &&
+            typeof (import.meta as ImportMetaLike).env.MODE === 'string'
         ) {
-            return import.meta.env.MODE !== 'production';
+            return (import.meta as ImportMetaLike).env.MODE !== 'production';
         }
     } catch {
         // ignore
@@ -53,7 +112,7 @@ const isDevEnv = () => {
 
 /**
  * createLayergeRouter - Router を拡張して Layerge の API を追加します
- * @param {import('../types').CreateLayergeRouterOptions} options - オプション
+ * @param options - オプション
  * @throws {Error} オプション不正やルート解決・Presenter定義の不整合が発生した場合にスローします
  * @returns {import('vue-router').Router&{
  *  $layerge:import('../core/store').LayergeStore,
@@ -61,7 +120,9 @@ const isDevEnv = () => {
  *  getLayergeState:() => {mode:import('../types').LayergeMode, depth:number}
  * }} 拡張ルータ
  */
-const createLayergeRouter = (options) => {
+const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
+    options: CreateLayergeRouterOptions<P>
+): LayergeRouter<P> => {
     const router = options.router;
     const debug = options.debug === true;
     const isDevelopmentMode = isDevEnv();
@@ -70,20 +131,23 @@ const createLayergeRouter = (options) => {
      * readDecisionTraceLevelInternal - dev-only: DecisionTrace レベルを読み取ります
      * - 既定は off
      * - グローバル変数または環境変数から読み取ります（公開APIではありません）
-     * @returns {'off'|'on-failure'|'on-unexpected'|'verbose'} level
+     * @returns level
      */
-    const readDecisionTraceLevelInternal = () => {
+    const readDecisionTraceLevelInternal = (): 'off' | 'on-failure' | 'on-unexpected' | 'verbose' => {
         if (!isDevelopmentMode) {
             return 'off';
         }
 
         try {
-            const g = typeof globalThis !== 'undefined' ? globalThis : /** @type {any} */ ({});
+            const g: GlobalLike = typeof globalThis !== 'undefined' ? (globalThis as GlobalLike) : {};
             const nodeProcess = g && g.process ? g.process : null;
+            // NOTE: import.meta を一度変数に受ける。直接 import.meta.env.X と書くと
+            // ライブラリのビルド時に静的置換され、利用者側の環境変数が読めなくなる。
+            const meta = import.meta as ImportMetaLike;
 
             const raw =
-                (g && typeof (/** @type {any} */ (g).__LAYERGE_DECISION_TRACE_LEVEL) === 'string'
-                    ? /** @type {any} */ (g).__LAYERGE_DECISION_TRACE_LEVEL
+                (g && typeof g.__LAYERGE_DECISION_TRACE_LEVEL === 'string'
+                    ? g.__LAYERGE_DECISION_TRACE_LEVEL
                     : null) ||
                 (nodeProcess &&
                 nodeProcess.env &&
@@ -92,9 +156,9 @@ const createLayergeRouter = (options) => {
                     : null) ||
                 (typeof import.meta !== 'undefined' &&
                 import.meta &&
-                /** @type {any} */ (import.meta).env &&
-                typeof (/** @type {any} */ (import.meta).env.VITE_LAYERGE_DECISION_TRACE_LEVEL) === 'string'
-                    ? /** @type {any} */ (import.meta).env.VITE_LAYERGE_DECISION_TRACE_LEVEL
+                meta.env &&
+                typeof meta.env.VITE_LAYERGE_DECISION_TRACE_LEVEL === 'string'
+                    ? meta.env.VITE_LAYERGE_DECISION_TRACE_LEVEL
                     : null);
 
             if (raw === 'off' || raw === 'on-failure' || raw === 'on-unexpected' || raw === 'verbose') {
@@ -111,10 +175,10 @@ const createLayergeRouter = (options) => {
      * sanitizeDecisionTraceData - DecisionTrace に出す data をサニタイズします
      * - URL / query 等の機密値は出さない
      * - deep object は展開しない
-     * @param {object} data - data
-     * @returns {object} sanitized
+     * @param data - data
+     * @returns sanitized
      */
-    const sanitizeDecisionTraceData = (data) => {
+    const sanitizeDecisionTraceData = (data: object): object => {
         const blockedKeys = new Set([
             'url',
             'path',
@@ -180,9 +244,9 @@ const createLayergeRouter = (options) => {
      * shouldEnableDecisionTraceGlobalsInternal - dev-only: globalThis へ dump/get を露出するか
      * - Public API ではありません
      * - dev + opt-in（debug または DecisionTraceLevel が on/off 以外）
-     * @returns {boolean}
+     * @returns
      */
-    const shouldEnableDecisionTraceGlobalsInternal = () => {
+    const shouldEnableDecisionTraceGlobalsInternal = (): boolean => {
         if (!isDevelopmentMode) {
             return false;
         }
@@ -196,10 +260,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * installDecisionTraceGlobalsInternal
-     * @returns {void}
+     * @returns
      */
-    const installDecisionTraceGlobalsInternal = () => {
-        const g = /** @type {any} */ (globalThis);
+    const installDecisionTraceGlobalsInternal = (): void => {
+        const g = /** @type {any} */ globalThis;
         const shouldEnable = shouldEnableDecisionTraceGlobalsInternal();
 
         if (!shouldEnable) {
@@ -230,11 +294,14 @@ const createLayergeRouter = (options) => {
 
     /**
      * shouldLogDecisionTraceInternal - 収束結果に応じて DecisionTrace を出すべきか
-     * @param {'off'|'on-failure'|'on-unexpected'|'verbose'} level - level
-     * @param {'completed'|'failed'|'aborted'|'superseded'|'blocked'} status - internal status
-     * @returns {boolean} should
+     * @param level - level
+     * @param status - internal status
+     * @returns should
      */
-    const shouldLogDecisionTraceInternal = (level, status) => {
+    const shouldLogDecisionTraceInternal = (
+        level: 'off' | 'on-failure' | 'on-unexpected' | 'verbose',
+        status: 'completed' | 'failed' | 'aborted' | 'superseded' | 'blocked'
+    ): boolean => {
         if (!isDevelopmentMode) {
             return false;
         }
@@ -257,10 +324,12 @@ const createLayergeRouter = (options) => {
 
     /**
      * findTraceInternal - traceId に一致する trace を探します（リングバッファから）
-     * @param {string} traceId - traceId
-     * @returns {import('../internals/decisionTrace.js').DecisionTrace|null} trace
+     * @param traceId - traceId
+     * @returns trace
      */
-    const findTraceInternal = (traceId) => {
+    const findTraceInternal = (
+        traceId: string
+    ): import('../internals/decisionTrace.js').DecisionTrace | null => {
         const traces = decisionTraceStore.getAll();
         for (let i = traces.length - 1; i >= 0; i--) {
             if (traces[i] && traces[i].traceId === traceId) {
@@ -272,11 +341,14 @@ const createLayergeRouter = (options) => {
 
     /**
      * logOutcomeInternal - Outcome Summary / DecisionTrace を出力します（dev-only）
-     * @param {import('../internals/outcome.js').LayergeOutcomeInternal} internalOutcome - internal
-     * @param {Error|unknown} [error] - error
-     * @returns {void}
+     * @param internalOutcome - internal
+     * @param [error] - error
+     * @returns
      */
-    const logOutcomeInternal = (internalOutcome, error) => {
+    const logOutcomeInternal = (
+        internalOutcome: import('../internals/outcome.js').LayergeOutcomeInternal,
+        error?: Error | unknown
+    ): void => {
         if (!shouldLogDecisionTraceInternal(decisionTraceLevel, internalOutcome.status)) {
             return;
         }
@@ -317,9 +389,9 @@ const createLayergeRouter = (options) => {
      * shouldLogOutcomeOneLineInternal
      * - dev では常に出す
      * - prod では debug オプション時のみ出す
-     * @returns {boolean}
+     * @returns
      */
-    const shouldLogOutcomeOneLineInternal = () => {
+    const shouldLogOutcomeOneLineInternal = (): boolean => {
         if (isDevelopmentMode) {
             return true;
         }
@@ -329,11 +401,14 @@ const createLayergeRouter = (options) => {
 
     /**
      * logOutcomeOneLineInternal - grep 向けの固定 1 行 outcome を出力します
-     * @param {import('../internals/outcome.js').LayergeOutcomeInternal} internalOutcome - internal
-     * @param {import('../internals/outcome.js').LayergeOutcomePublic} publicOutcome - public
-     * @returns {void}
+     * @param internalOutcome - internal
+     * @param publicOutcome - public
+     * @returns
      */
-    const logOutcomeOneLineInternal = (internalOutcome, publicOutcome) => {
+    const logOutcomeOneLineInternal = (
+        internalOutcome: import('../internals/outcome.js').LayergeOutcomeInternal,
+        publicOutcome: import('../internals/outcome.js').LayergeOutcomePublic
+    ): void => {
         if (!shouldLogOutcomeOneLineInternal()) {
             return;
         }
@@ -363,15 +438,15 @@ const createLayergeRouter = (options) => {
 
     /**
      * logFailedHintInternal - failed 時に dump 導線を短く案内します
-     * @param {string} traceId - traceId
-     * @returns {void}
+     * @param traceId - traceId
+     * @returns
      */
-    const logFailedHintInternal = (traceId) => {
+    const logFailedHintInternal = (traceId: string): void => {
         if (!isDevelopmentMode) {
             return;
         }
 
-        const g = /** @type {any} */ (globalThis);
+        const g = /** @type {any} */ globalThis;
         if (typeof g.__layergeDumpDecisionTraces !== 'function') {
             return;
         }
@@ -381,10 +456,27 @@ const createLayergeRouter = (options) => {
 
     /**
      * settleOutcomeInternal - 内部Outcomeの生成・射影・DecisionTrace確定・ログ出力をまとめます
-     * @param {{traceId: string, stage: 'open'|'navigate'|'close'|'restore', status: 'completed'|'failed'|'aborted'|'superseded'|'blocked', reason?: string, error?: unknown}} args - args
-     * @returns {import('../internals/outcome.js').LayergeOutcomePublic} public outcome
+     * @param args - args
+     * @param args.traceId - 操作単位の traceId
+     * @param args.stage - 操作種別
+     * @param args.status - 収束ステータス（内部）
+     * @param args.reason - 失敗理由（dev-only）
+     * @param args.error - 例外（dev-only）
+     * @returns public outcome
      */
-    const settleOutcomeInternal = ({traceId, stage, status, reason, error}) => {
+    const settleOutcomeInternal = ({
+        traceId,
+        stage,
+        status,
+        reason,
+        error
+    }: {
+        traceId: string;
+        stage: OutcomeStage;
+        status: OutcomeInternalStatus;
+        reason?: string;
+        error?: unknown;
+    }): LayergeOutcomePublic => {
         const internalOutcome = createInternalOutcome({
             traceId: traceId,
             stage: stage,
@@ -417,10 +509,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * onBeforeUnload - beforeunload ハンドラ
-     * @param {BeforeUnloadEvent} e - event
-     * @returns {string|void}
+     * @param e - event
+     * @returns
      */
-    const onBeforeUnload = (e) => {
+    const onBeforeUnload = (e: BeforeUnloadEvent): string | void => {
         // ブラウザ仕様により message の表示は保証されません
         e.preventDefault();
         e.returnValue = '';
@@ -455,10 +547,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * hasControlledHook - controlledHooks が指定されているか
-     * @param {'beforeOpen'|'beforeClose'|'beforeNavigate'} hookName
-     * @returns {boolean}
+     * @param hookName
+     * @returns
      */
-    const hasControlledHook = (hookName) => {
+    const hasControlledHook = (hookName: 'beforeOpen' | 'beforeClose' | 'beforeNavigate'): boolean => {
         const fn = controlledHooks ? controlledHooks[hookName] : undefined;
         return typeof fn === 'function';
     };
@@ -468,11 +560,14 @@ const createLayergeRouter = (options) => {
      * - hook が未指定なら同期で {ok:true} を返す（v1系テスト互換）
      * - false / throw は中止
      * - Promise は await（latest-wins: 新しい呼び出しが来たら旧結果は採用しない）
-     * @param {'beforeOpen'|'beforeClose'|'beforeNavigate'} hookName
-     * @param {any} ctx
-     * @returns {{ok:boolean, signal:AbortSignal} | Promise<{ok:boolean, signal:AbortSignal}>}
+     * @param hookName
+     * @param ctx
+     * @returns | Promise<{ok:boolean, signal:AbortSignal}>}
      */
-    const runControlledHookMaybe = (hookName, ctx) => {
+    const runControlledHookMaybe = (
+        hookName: 'beforeOpen' | 'beforeClose' | 'beforeNavigate',
+        ctx: Omit<LayergeControlledHookContext, 'signal'>
+    ): {ok: boolean; signal: AbortSignal} | Promise<{ok: boolean; signal: AbortSignal}> => {
         const fn = controlledHooks ? controlledHooks[hookName] : undefined;
 
         // No hook -> sync allow
@@ -508,8 +603,10 @@ const createLayergeRouter = (options) => {
 
         try {
             const result = fn(safeCtx);
-            if (result && typeof result.then === 'function') {
-                return result.then(normalize).catch(() => ({ok: false, signal: signal}));
+            if (result && typeof (result as Promise<boolean | void>).then === 'function') {
+                return (result as Promise<boolean | void>)
+                    .then(normalize)
+                    .catch(() => ({ok: false, signal: signal}));
             }
             return normalize(result);
         } catch {
@@ -525,12 +622,12 @@ const createLayergeRouter = (options) => {
 
     /**
      * getPresenterComponentId - Component から keepMounted 用の安定IDを取得します
-     * @param {import('vue').Component} component - 対象コンポーネント
-     * @returns {string} 安定ID
+     * @param component - 対象コンポーネント
+     * @returns 安定ID
      */
-    const getPresenterComponentId = (component) => {
+    const getPresenterComponentId = (component: import('vue').Component): string => {
         // NOTE: Vue Component は object/function を取りうる。WeakMap の key は object のみ。
-        const key = /** @type {any} */ (component);
+        const key = /** @type {any} */ component;
 
         if (!key || (typeof key !== 'object' && typeof key !== 'function')) {
             return 'component_unknown';
@@ -549,10 +646,12 @@ const createLayergeRouter = (options) => {
 
     /**
      * expandMountPreset - mountPreset を展開します
-     * @param {'default'|'keep'|'pre'|'prekeep'|undefined} preset - プリセット
-     * @returns {{preMounted:boolean, keepMounted:boolean}|null} 展開結果。preset未指定の場合はnull。
+     * @param preset - プリセット
+     * @returns |null} 展開結果。preset未指定の場合はnull。
      */
-    const expandMountPreset = (preset) => {
+    const expandMountPreset = (
+        preset: 'default' | 'keep' | 'pre' | 'prekeep' | undefined
+    ): {preMounted: boolean; keepMounted: boolean} | null => {
         if (preset === 'default') {
             return {preMounted: false, keepMounted: false};
         }
@@ -578,17 +677,21 @@ const createLayergeRouter = (options) => {
      * 1) options（呼び出し時）
      * 2) presenterDefaults（createLayerge）
      * 3) fallback（false/false）
-     * @param {Record<string, unknown>} callOptions - 呼び出し時 options
-     * @returns {{preMounted:boolean, keepMounted:boolean}} 展開結果
+     * @param callOptions - 呼び出し時 options
+     * @returns } 展開結果
      */
-    const resolveMountOptions = (callOptions) => {
-        const fromCallPreset = expandMountPreset(/** @type {any} */ (callOptions).mountPreset);
+    const resolveMountOptions = (
+        callOptions: Record<string, unknown>
+    ): {preMounted: boolean; keepMounted: boolean} => {
+        const fromCallPreset = expandMountPreset(
+            callOptions.mountPreset as 'default' | 'keep' | 'pre' | 'prekeep' | undefined
+        );
         const fromDefaultsPreset = expandMountPreset(
             presenterDefaults ? presenterDefaults.mountPreset : undefined
         );
 
-        const preMountedRaw = /** @type {any} */ (callOptions).preMounted;
-        const keepMountedRaw = /** @type {any} */ (callOptions).keepMounted;
+        const preMountedRaw = /** @type {any} */ callOptions.preMounted;
+        const keepMountedRaw = /** @type {any} */ callOptions.keepMounted;
 
         const preMountedDefaultRaw = presenterDefaults ? presenterDefaults.preMounted : undefined;
         const keepMountedDefaultRaw = presenterDefaults ? presenterDefaults.keepMounted : undefined;
@@ -635,11 +738,11 @@ const createLayergeRouter = (options) => {
 
     /**
      * warnDev - 開発時のみ警告を出します（debug:true のとき）
-     * @param {string} message - 警告メッセージ
-     * @param {Record<string, unknown>} [data] - 警告に関連する追加情報（キーバリューペア）
-     * @returns {void}
+     * @param message - 警告メッセージ
+     * @param [data] - 警告に関連する追加情報（キーバリューペア）
+     * @returns
      */
-    const warnDev = (message, data) => {
+    const warnDev = (message: string, data?: Record<string, unknown>): void => {
         // 開発環境かつデバッグモードが有効な場合のみ警告を出力
         if (!isDevelopmentMode || !debug) {
             return;
@@ -652,10 +755,10 @@ const createLayergeRouter = (options) => {
      * mergeHistoryStateInternal - history.state を破壊せずに merge 更新します
      *
      * NOTE: vue-router が内部で保持する state を潰すと事故るため、必ず top-level merge する。
-     * @param {Record<string, unknown>} patch - 追加する state
-     * @returns {void}
+     * @param patch - 追加する state
+     * @returns
      */
-    const mergeHistoryStateInternal = (patch) => {
+    const mergeHistoryStateInternal = (patch: Record<string, unknown>): void => {
         try {
             const h = typeof globalThis !== 'undefined' ? globalThis.history : undefined;
 
@@ -680,9 +783,13 @@ const createLayergeRouter = (options) => {
 
     /**
      * readLayergeHistoryStateInternal - 現在の history.state から Layerge 用情報を読み取ります
-     * @returns {{mode:'presenter', entryId:string, toFullPath:string}|null} Layerge state、存在しない場合は null
+     * @returns |null} Layerge state、存在しない場合は null
      */
-    const readLayergeHistoryStateInternal = () => {
+    const readLayergeHistoryStateInternal = (): {
+        mode: 'presenter';
+        entryId: string;
+        toFullPath: string;
+    } | null => {
         try {
             const h = typeof globalThis !== 'undefined' ? globalThis.history : undefined;
 
@@ -690,7 +797,7 @@ const createLayergeRouter = (options) => {
                 return null;
             }
 
-            const state = /** @type {any} */ (h.state);
+            const state = /** @type {any} */ h.state;
             const layerge = state.layerge;
 
             if (!layerge || typeof layerge !== 'object') {
@@ -739,11 +846,11 @@ const createLayergeRouter = (options) => {
      * - 'top'         => stack:false, cache:false
      * - 'stack'       => stack:true,  cache:false
      * - 'stack+cache' => stack:true,  cache:true
-     * @param {unknown} value - 解析対象の値
+     * @param value - 解析対象の値
      * @throws {Error} 不正なdisplay値の場合にスロー
-     * @returns {{stack:boolean, cache:boolean}|null} 解析結果、nullまたは未定義の場合はnull
+     * @returns |null} 解析結果、nullまたは未定義の場合はnull
      */
-    const parseDisplay = (value) => {
+    const parseDisplay = (value: unknown): {stack: boolean; cache: boolean} | null => {
         // displayオプションが未定義またはnullの場合はnullを返す
         if (value === undefined || value === null) {
             return null;
@@ -855,25 +962,25 @@ const createLayergeRouter = (options) => {
 
     /**
      * isHTMLElement - HTMLElement 判定（SSR/テストで安全に動作させる）
-     * @param {unknown} el - 判定対象
-     * @returns {el is HTMLElement} HTMLElement の場合 true
+     * @param el - 判定対象
+     * @returns HTMLElement の場合 true
      */
-    const isHTMLElement = (el) => {
+    const isHTMLElement = (el: unknown): el is HTMLElement => {
         try {
             return typeof HTMLElement !== 'undefined' && el instanceof HTMLElement;
         } catch {
             // Fallback: nodeType===1 (Element)
-            return !!(el && typeof el === 'object' && /** @type {any} */ (el).nodeType === 1);
+            return !!(el && typeof el === 'object' && (el as {nodeType?: number}).nodeType === 1);
         }
     };
 
     /**
      * setInvokerInternal - entryId と起動元DOMを紐づけます（v2）
-     * @param {string} entryId - 対象 entryId
-     * @param {unknown} el - 起動元DOM
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @param el - 起動元DOM
+     * @returns
      */
-    const setInvokerInternal = (entryId, el) => {
+    const setInvokerInternal = (entryId: string, el: unknown): void => {
         if (typeof entryId !== 'string' || entryId.length === 0) {
             warnDev('setInvokerInternal: invalid entryId.', {entryId: entryId});
             return;
@@ -893,10 +1000,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * getInvokerInternal - entryId に紐づく invoker を取得します（v2）
-     * @param {string} entryId - 対象 entryId
-     * @returns {import('../types').LayergeInvoker|null} invoker（存在しない場合 null）
+     * @param entryId - 対象 entryId
+     * @returns invoker（存在しない場合 null）
      */
-    const getInvokerInternal = (entryId) => {
+    const getInvokerInternal = (entryId: string): import('../types').LayergeInvoker | null => {
         try {
             return $layerge._invokers.get(entryId) ?? null;
         } catch {
@@ -906,10 +1013,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * deleteInvokerInternal - entryId に紐づく invoker を破棄します（v2）
-     * @param {string} entryId - 対象 entryId
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @returns
      */
-    const deleteInvokerInternal = (entryId) => {
+    const deleteInvokerInternal = (entryId: string): void => {
         try {
             $layerge._invokers.delete(entryId);
         } catch {
@@ -925,10 +1032,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * isTransitionManaged - entryId が LayergeTransition により管理されているか
-     * @param {string} entryId - 対象 entryId
-     * @returns {boolean} 管理されている場合 true
+     * @param entryId - 対象 entryId
+     * @returns 管理されている場合 true
      */
-    const isTransitionManaged = (entryId) => {
+    const isTransitionManaged = (entryId: string): boolean => {
         try {
             return $layerge._transitionManagedEntryIds && $layerge._transitionManagedEntryIds.has(entryId);
         } catch {
@@ -938,10 +1045,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * scheduleAutoEnterDone - 非アニメ（Transition未使用）向けの enter 完了通知を予約します
-     * @param {string} entryId - 対象 entryId
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @returns
      */
-    const scheduleAutoEnterDone = (entryId) => {
+    const scheduleAutoEnterDone = (entryId: string): void => {
         // LayergeTransition が mounted していればスキップ
         nextTick(() => {
             if (isTransitionManaged(entryId)) {
@@ -956,10 +1063,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * scheduleAutoLeaveDone - 非アニメ（Transition未使用）向けの leave 完了通知を予約します
-     * @param {string} entryId - 対象 entryId
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @returns
      */
-    const scheduleAutoLeaveDone = (entryId) => {
+    const scheduleAutoLeaveDone = (entryId: string): void => {
         nextTick(() => {
             if (isTransitionManaged(entryId)) {
                 return;
@@ -990,10 +1097,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * isSameAsBackground - 遷移先が背景と一致するか判定します
-     * @param {import('vue-router').RouteLocationNormalizedLoaded} toRoute - 遷移先
-     * @returns {boolean} 一致する場合 true
+     * @param toRoute - 遷移先
+     * @returns 一致する場合 true
      */
-    const isSameAsBackground = (toRoute) => {
+    const isSameAsBackground = (toRoute: import('vue-router').RouteLocationNormalizedLoaded): boolean => {
         // 背景ルートが設定されていない場合は一致しない
         if (!$layerge.backgroundRoute) {
             return false;
@@ -1010,12 +1117,15 @@ const createLayergeRouter = (options) => {
 
     /**
      * assertValidRoute - ルートが有効か検証します
-     * @param {import('vue-router').RouteLocationNormalizedLoaded} route - 解決済みルート
-     * @param {boolean} [allowUnmatched] - true の場合、未マッチ route（matched.length===0）を許容します（url/fakePath互換用途）
+     * @param route - 解決済みルート
+     * @param [allowUnmatched] - true の場合、未マッチ route（matched.length===0）を許容します（url/fakePath互換用途）
      * @throws {Error} 無効ルートの場合にスロー
-     * @returns {void}
+     * @returns
      */
-    const assertValidRoute = (route, allowUnmatched = false) => {
+    const assertValidRoute = (
+        route: import('vue-router').RouteLocationNormalizedLoaded,
+        allowUnmatched: boolean = false
+    ): void => {
         // 未マッチルートが許可されておらず、実際にマッチしていない場合はエラー
         if (!allowUnmatched && (!route.matched || route.matched.length === 0)) {
             throw new Error('[Layerge] Invalid route (no matched records).');
@@ -1030,10 +1140,10 @@ const createLayergeRouter = (options) => {
     /**
      * cancelPendingNavIfAny - 未確定の Presenter 遷移をキャンセルします
      * - v1.x: 最新操作が勝つ（pending は置き換える）
-     * @returns {void}
+     * @returns
      */
-    const cancelPendingNavIfAny = () => {
-        const pending = $layerge.pending;
+    const cancelPendingNavIfAny = (): void => {
+        const pending: PendingWithTrace | null = $layerge.pending;
 
         // TODO: 将来的にはpendingの管理方法を改善して競合状態をより確実に回避する
         // 未確定の遷移が存在しない場合は何もしない
@@ -1080,11 +1190,11 @@ const createLayergeRouter = (options) => {
 
     /**
      * assertPresenterRegistered - Presenter 登録を確認します
-     * @param {string} presenterName - Presenter 名
+     * @param presenterName - Presenter 名
      * @throws {Error} 未登録の場合にスロー
-     * @returns {void}
+     * @returns
      */
-    const assertPresenterRegistered = (presenterName) => {
+    const assertPresenterRegistered = (presenterName: string): void => {
         const def = $layerge.presenters[presenterName];
 
         if (!def) {
@@ -1098,9 +1208,9 @@ const createLayergeRouter = (options) => {
 
     /**
      * enterPresenterModeIfNeeded - Presenter モードへ遷移します
-     * @returns {void}
+     * @returns
      */
-    const enterPresenterModeIfNeeded = () => {
+    const enterPresenterModeIfNeeded = (): void => {
         if ($layerge.mode !== 'presenter') {
             $layerge.mode = 'presenter';
         }
@@ -1108,9 +1218,9 @@ const createLayergeRouter = (options) => {
 
     /**
      * captureBackgroundBeforeFirstPresenter - 0→1 の瞬間だけ背景を固定します（遷移前に実行する）
-     * @returns {void}
+     * @returns
      */
-    const captureBackgroundBeforeFirstPresenter = () => {
+    const captureBackgroundBeforeFirstPresenter = (): void => {
         if ($layerge.stack.length !== 0) {
             return;
         }
@@ -1123,9 +1233,9 @@ const createLayergeRouter = (options) => {
 
     /**
      * exitPresenterMode - Presenter モードを終了します（履歴は操作しない）
-     * @returns {void}
+     * @returns
      */
-    const exitPresenterMode = () => {
+    const exitPresenterMode = (): void => {
         $layerge.backgroundRoute = null;
         $layerge.freezeBackground = false;
 
@@ -1134,12 +1244,16 @@ const createLayergeRouter = (options) => {
 
     /**
      * moveEntryToLeaving - entry を leaving へ移動します（leave演出のためDOM保持）
-     * @param {import('../types').PresenterEntry} entry - 対象 entry
-     * @param {number} leavingIndex - leave 開始時点の index
-     * @param {number} leavingDepth - leave 開始時点の depth
-     * @returns {void}
+     * @param entry - 対象 entry
+     * @param leavingIndex - leave 開始時点の index
+     * @param leavingDepth - leave 開始時点の depth
+     * @returns
      */
-    const moveEntryToLeaving = (entry, leavingIndex, leavingDepth) => {
+    const moveEntryToLeaving = (
+        entry: import('../types').PresenterEntry,
+        leavingIndex: number,
+        leavingDepth: number
+    ): void => {
         entry.phase = 'leave';
         entry._leavingIndex = leavingIndex;
         entry._leavingDepth = leavingDepth;
@@ -1156,10 +1270,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * moveStackEntriesToLeaving - stack の範囲を leaving に移動します
-     * @param {number} fromIndexInclusive - 移動開始 index（含む）
-     * @returns {void}
+     * @param fromIndexInclusive - 移動開始 index（含む）
+     * @returns
      */
-    const moveStackEntriesToLeaving = (fromIndexInclusive) => {
+    const moveStackEntriesToLeaving = (fromIndexInclusive: number): void => {
         const originalDepth = $layerge.stack.length;
 
         for (let i = originalDepth - 1; i >= fromIndexInclusive; i--) {
@@ -1175,9 +1289,9 @@ const createLayergeRouter = (options) => {
 
     /**
      * clearPresenterOverlay - overlay だけを閉じます（背景freezeは維持）
-     * @returns {void}
+     * @returns
      */
-    const clearPresenterOverlay = () => {
+    const clearPresenterOverlay = (): void => {
         // pending は commit されていないため即時閉じ（leave不要）
         cancelPendingNavIfAny();
 
@@ -1198,11 +1312,14 @@ const createLayergeRouter = (options) => {
      */
     /**
      * closeByIdInternalAsync - ID を指定して Presenter を閉じます（await用）
-     * @param {string} id - 対象ID
-     * @param {{restoreUrl?: boolean}|undefined} [options] - オプション
-     * @returns {Promise<import('../types').PresenterAsyncResult>} 結果
+     * @param id - 対象ID
+     * @param [options] - オプション
+     * @returns 結果
      */
-    const closeByIdInternalAsync = async (id, options) => {
+    const closeByIdInternalAsync = async (
+        id: string,
+        options?: {restoreUrl?: boolean} | undefined
+    ): Promise<import('../types').PresenterAsyncResult> => {
         const traceId = createId('trace');
 
         try {
@@ -1303,7 +1420,7 @@ const createLayergeRouter = (options) => {
 
                 const navP = router.replace(actionReturnTo);
 
-                if (navP && typeof (/** @type {any} */ (navP).then) === 'function') {
+                if (navP && typeof (/** @type {any} */ navP.then) === 'function') {
                     await navP;
                 }
                 return true;
@@ -1392,7 +1509,7 @@ const createLayergeRouter = (options) => {
                 decisionTraceStore.push(traceId, 'error', {
                     message:
                         e && typeof e === 'object' && 'message' in e
-                            ? /** @type {any} */ (e).message
+                            ? /** @type {any} */ e.message
                             : String(e)
                 });
             } catch {
@@ -1415,11 +1532,11 @@ const createLayergeRouter = (options) => {
 
     /**
      * closeByIdInternal - ID を指定して Presenter を閉じます（URL復元を含む）
-     * @param {string} id - 対象ID
-     * @param {{restoreUrl?: boolean}|undefined} [options] - オプション
-     * @returns {void}
+     * @param id - 対象ID
+     * @param [options] - オプション
+     * @returns
      */
-    const closeByIdInternal = (id, options) => {
+    const closeByIdInternal = (id: string, options?: {restoreUrl?: boolean} | undefined): void => {
         // NOTE:
         // v1.x unit tests expect close() side effects (stack->leaving, state update)
         // to be observable synchronously when no async gates are involved.
@@ -1446,14 +1563,15 @@ const createLayergeRouter = (options) => {
         if (hasControlledHook('beforeClose')) {
             const gateMaybe = runControlledHookMaybe('beforeClose', {entryId: id, action: 'close'});
 
-            if (gateMaybe && typeof gateMaybe.then === 'function') {
+            if (
+                gateMaybe &&
+                typeof (gateMaybe as Promise<{ok: boolean; signal: AbortSignal}>).then === 'function'
+            ) {
                 closeByIdInternalAsync(id, options);
                 return;
             }
 
-            /** @type {{ok?: boolean}|null|undefined} */
-
-            const gate = gateMaybe;
+            const gate = gateMaybe as {ok?: boolean} | null | undefined;
 
             if (!gate || gate.ok === false) {
                 // close がキャンセルされた場合は isActive を復元する
@@ -1471,7 +1589,10 @@ const createLayergeRouter = (options) => {
             // ignore
         }
 
-        const finalizeOutcome = (status, reason) => {
+        // NOTE: 呼び出し側の 1 箇所が第 3 引数に error を渡しているが、本関数は
+        // それを使っていない（移行前からの挙動）。挙動を変えないため受け取るだけにする。
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const finalizeOutcome = (status: OutcomeInternalStatus, reason?: string, error?: unknown): void => {
             settleOutcomeInternal({
                 traceId: traceId,
                 stage: 'close',
@@ -1538,22 +1659,20 @@ const createLayergeRouter = (options) => {
 
             const navP = router.replace(actionReturnTo);
 
-            if (navP && typeof (/** @type {any} */ (navP).then) === 'function') {
-                /** @type {any} */ (navP)
-                    .then(() => {
-                        finalizeOutcome('completed', 'restoreUrl');
-                    })
-                    .catch((err) => {
-                        try {
-                            decisionTraceStore.push(traceId, 'error', {
-                                message: err instanceof Error ? err.message : String(err)
-                            });
-                        } catch {
-                            // ignore
-                        }
+            if (navP && typeof (/** @type {any} */ navP.then) === 'function') {
+                /** @type {any} */ navP.then(() => {
+                    finalizeOutcome('completed', 'restoreUrl');
+                }).catch((err) => {
+                    try {
+                        decisionTraceStore.push(traceId, 'error', {
+                            message: err instanceof Error ? err.message : String(err)
+                        });
+                    } catch {
+                        // ignore
+                    }
 
-                        finalizeOutcome('failed', 'routerNavigationFailed', err);
-                    });
+                    finalizeOutcome('failed', 'routerNavigationFailed', err);
+                });
 
                 return;
             }
@@ -1567,10 +1686,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * buildHandle - PresenterHandle を生成します
-     * @param {string} id - エントリID
-     * @returns {import('../types').PresenterHandleInternal} ハンドル
+     * @param id - エントリID
+     * @returns ハンドル
      */
-    const buildHandle = (id) => {
+    const buildHandle = (id: string): import('../types').PresenterHandleInternal => {
         return createPresenterHandle(id, () => {
             closeByIdInternal(id, undefined);
         });
@@ -1586,26 +1705,30 @@ const createLayergeRouter = (options) => {
      * @param {import('../types').PresenterKind} navType - close 時に適用するナビ種別（URL を動かした場合のみ push/replace）
      * @param {string|null} returnTo - replace-close の戻り先（from.fullPath）。不要な場合は null。
      * @param mountOptions
+     * @param mountOptions.preMounted
+     * @param mountOptions.keepMounted
      * @param keepKey
      * @returns {void}
      */
     const commitEntry = (
-        presenterName,
-        kind,
-        route,
-        handle,
-        viewComponent,
-        navType,
-        returnTo,
-        mountOptions,
-        keepKey
-    ) => {
+        presenterName: string,
+        kind: PresenterKind,
+        route: RouteLocationNormalizedLoaded,
+        handle: PresenterHandleInternal,
+        viewComponent: Component | null,
+        navType: PresenterKind,
+        returnTo: string | null,
+        mountOptions?: {preMounted: boolean; keepMounted: boolean},
+        keepKey?: string | null
+    ): void => {
         enterPresenterModeIfNeeded();
 
         const id = handle._id;
         const safeRoute = markRaw(route);
 
-        const safeMountOptions = mountOptions ? mountOptions : {};
+        const safeMountOptions: {preMounted?: boolean; keepMounted?: boolean} = mountOptions
+            ? mountOptions
+            : {};
         const preMounted = safeMountOptions.preMounted === true;
         const keepMounted = safeMountOptions.keepMounted === true;
 
@@ -1657,10 +1780,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * isRouteTarget - targetがRouteLocationRawか判定します
-     * @param {unknown} target - 判定対象のtarget
-     * @returns {target is import('vue-router').RouteLocationRaw} RouteLocationRawの場合true（型ガード）
+     * @param target - 判定対象のtarget
+     * @returns RouteLocationRawの場合true（型ガード）
      */
-    const isRouteTarget = (target) => {
+    const isRouteTarget = (target: unknown): target is import('vue-router').RouteLocationRaw => {
         if (typeof target === 'string') {
             return true;
         }
@@ -1688,20 +1811,20 @@ const createLayergeRouter = (options) => {
 
     /**
      * isLoaderTarget - targetがloader関数か判定します
-     * @param {unknown} target - 判定対象のtarget
-     * @returns {target is (() => Promise<import('vue').Component>)} loader関数の場合true（型ガード）
+     * @param target - 判定対象のtarget
+     * @returns loader関数の場合true（型ガード）
      */
-    const isLoaderTarget = (target) => {
+    const isLoaderTarget = (target: unknown): target is () => Promise<import('vue').Component> => {
         // v1.x: loader は「引数なし関数」を想定（() => import('...')）
         return typeof target === 'function' && target.length === 0;
     };
 
     /**
      * toViewComponent - Component/loaderを描画用コンポーネントへ正規化します
-     * @param {import('../types').PresenterTarget} target - 正規化対象のtarget（PresenterTarget型）
-     * @returns {import('vue').Component|null} 描画用コンポーネント（RouteLocationRawの場合はnull）
+     * @param target - 正規化対象のtarget（PresenterTarget型）
+     * @returns 描画用コンポーネント（RouteLocationRawの場合はnull）
      */
-    const toViewComponent = (target) => {
+    const toViewComponent = (target: import('../types').PresenterTarget): import('vue').Component | null => {
         if (isRouteTarget(target)) {
             return null;
         }
@@ -1716,7 +1839,9 @@ const createLayergeRouter = (options) => {
                         return loader();
                     })
                     .then((m) => {
-                        return m && m.default ? m.default : m;
+                        return m && (m as {default?: Component}).default
+                            ? (m as {default?: Component}).default
+                            : m;
                     });
             });
 
@@ -1729,9 +1854,9 @@ const createLayergeRouter = (options) => {
 
     /**
      * ensureKeptArray - keepMounted 用の保持配列を初期化します
-     * @returns {import('../types').PresenterEntry[]} kept 配列
+     * @returns kept 配列
      */
-    const ensureKeptArray = () => {
+    const ensureKeptArray = (): import('../types').PresenterEntry[] => {
         if (!Array.isArray($layerge._kept)) {
             $layerge._kept = [];
         }
@@ -1741,12 +1866,16 @@ const createLayergeRouter = (options) => {
 
     /**
      * buildKeepKey - keepMounted の再利用キーを生成します
-     * @param {import('../types').PresenterTarget} target - 呼び出し target
-     * @param {import('vue-router').RouteLocationNormalizedLoaded} resolvedRoute - 解決済みルート
-     * @param {import('vue').Component|null} viewComponent - viewComponent
-     * @returns {string} 再利用キー
+     * @param target - 呼び出し target
+     * @param resolvedRoute - 解決済みルート
+     * @param viewComponent - viewComponent
+     * @returns 再利用キー
      */
-    const buildKeepKey = (target, resolvedRoute, viewComponent) => {
+    const buildKeepKey = (
+        target: import('../types').PresenterTarget,
+        resolvedRoute: import('vue-router').RouteLocationNormalizedLoaded,
+        viewComponent: import('vue').Component | null
+    ): string => {
         // Route ベース: 同一fullPathのみ再利用
         if (isRouteTarget(target)) {
             return `route:${resolvedRoute.fullPath}`;
@@ -1763,15 +1892,24 @@ const createLayergeRouter = (options) => {
 
     /**
      * reuseKeptEntry - keepMounted の場合に kept entry を再利用します（openのみ）
-     * @param {string} presenterName - Presenter 名
-     * @param {'open'} kind - 種別（openのみ）
-     * @param {import('vue-router').RouteLocationNormalizedLoaded} actual - 解決済みルート
-     * @param {import('vue').Component|null} viewComponent - viewComponent
-     * @param {string} keepKey - 再利用キー
-     * @param {{preMounted:boolean, keepMounted:boolean}} mountOptions - 展開済み mount options
-     * @returns {import('../types').PresenterHandleInternal|null} 再利用できた場合は handle。できなければ null。
+     * @param presenterName - Presenter 名
+     * @param kind - 種別（openのみ）
+     * @param actual - 解決済みルート
+     * @param viewComponent - viewComponent
+     * @param keepKey - 再利用キー
+     * @param mountOptions - 展開済み mount options
+     * @param mountOptions.preMounted
+     * @param mountOptions.keepMounted
+     * @returns 再利用できた場合は handle。できなければ null。
      */
-    const reuseKeptEntry = (presenterName, kind, actual, viewComponent, keepKey, mountOptions) => {
+    const reuseKeptEntry = (
+        presenterName: string,
+        kind: PresenterKind,
+        actual: import('vue-router').RouteLocationNormalizedLoaded,
+        viewComponent: import('vue').Component | null,
+        keepKey: string,
+        mountOptions: {preMounted: boolean; keepMounted: boolean}
+    ): import('../types').PresenterHandleInternal | null => {
         if (kind !== 'open') {
             return null;
         }
@@ -1831,14 +1969,22 @@ const createLayergeRouter = (options) => {
 
     /**
      * presenterNavigate - Presenter API: open/push/replace を共通実装します
-     * @param {string} presenterName - Presenter 名
-     * @param {import('../types').PresenterKind} kind - 種別
-     * @param {import('../types').PresenterTarget} target - to | Component | loader
-     * @param {import('../types').PresenterPushReplaceOptions|import('../types').PresenterOpenOptions|undefined} options - オプション
+     * @param presenterName - Presenter 名
+     * @param kind - 種別
+     * @param target - to | Component | loader
+     * @param options - オプション
      * @throws {Error} open(RouteLocationRaw) で未解決のルートを指定した場合にスロー
-     * @returns {import('../types').PresenterHandle} ハンドル
+     * @returns ハンドル
      */
-    const presenterNavigate = (presenterName, kind, target, options) => {
+    const presenterNavigate = (
+        presenterName: string,
+        kind: import('../types').PresenterKind,
+        target: import('../types').PresenterTarget,
+        options:
+            | import('../types').PresenterPushReplaceOptions
+            | import('../types').PresenterOpenOptions
+            | undefined
+    ): import('../types').PresenterHandle => {
         assertPresenterRegistered(presenterName);
 
         // v1.x: 最新操作が勝つ
@@ -1846,13 +1992,14 @@ const createLayergeRouter = (options) => {
 
         const safeOptions = options ? options : {};
 
-        /** @type {string|import('vue-router').RouteLocationRaw|undefined} */
-        const url = safeOptions.url;
+        // open の options には url / fakePath を持たせていない（誤用を型で抑止するため）。
+        // ただし実装は誤用を検出して警告するために読み出す。
+        const url = (safeOptions as PresenterPushReplaceOptions).url;
 
         /** @type {string|undefined} */
-        const fakePath = safeOptions.fakePath;
+        const fakePath = (safeOptions as PresenterPushReplaceOptions).fakePath;
 
-        const mountOptions = resolveMountOptions(/** @type {any} */ (safeOptions));
+        const mountOptions = resolveMountOptions(safeOptions as Record<string, unknown>);
 
         if (url !== undefined && typeof url !== 'string' && typeof url !== 'object') {
             throw new Error('[Layerge] url must be a string or RouteLocationRaw.');
@@ -1885,7 +2032,7 @@ const createLayergeRouter = (options) => {
         // v4.0: traceId（dev-only, 公開APIではない）
         const traceId = createId('trace');
         /** @type {'open'|'navigate'|'close'|'restore'} */
-        let traceStage = kind === 'open' ? 'open' : 'navigate';
+        let traceStage: OutcomeStage = kind === 'open' ? 'open' : 'navigate';
 
         try {
             decisionTraceStore.start(traceId);
@@ -1900,12 +2047,16 @@ const createLayergeRouter = (options) => {
 
         /**
          * cancelHandle - 未確定の操作を中断します（dev-only: internal Outcome を併設）
-         * @param {'aborted'|'failed'|'superseded'|'blocked'} internalStatus - internal status
-         * @param {string|undefined} reason - 理由（dev-only）
-         * @param {unknown} error - error（failed の場合）
-         * @returns {void}
+         * @param internalStatus - internal status
+         * @param reason - 理由（dev-only）
+         * @param error - error（failed の場合）
+         * @returns
          */
-        const cancelHandle = (internalStatus, reason, error) => {
+        const cancelHandle = (
+            internalStatus: 'aborted' | 'failed' | 'superseded' | 'blocked',
+            reason: string | undefined,
+            error: unknown
+        ): void => {
             const publicStatus = settleOutcomeInternal({
                 traceId: traceId,
                 stage: traceStage,
@@ -1915,16 +2066,21 @@ const createLayergeRouter = (options) => {
             });
 
             handle._setActive(false);
-            handle._resolveSettled({status: publicStatus});
+            // NOTE: settleOutcomeInternal は LayergeOutcomePublic（{traceId, status}）を返すが、
+            // ここではその戻り値をそのまま status に入れている（移行前からの挙動）。
+            // 挙動を変えないため、型だけ合わせて現状を維持する。
+            handle._resolveSettled({
+                status: publicStatus as unknown as PresenterAsyncResult['status']
+            });
             handle._resolveClosed();
         };
 
         /**
          * completeTrace - commit（completed）のみを内部 Outcome として確定します
-         * @param {string|undefined} reason - 理由（dev-only）
-         * @returns {void}
+         * @param reason - 理由（dev-only）
+         * @returns
          */
-        const completeTrace = (reason) => {
+        const completeTrace = (reason: string | undefined): void => {
             settleOutcomeInternal({
                 traceId: traceId,
                 stage: traceStage,
@@ -2023,11 +2179,14 @@ const createLayergeRouter = (options) => {
 
         /**
          * resolveUrlLocation - url（または fakePath互換）を解決可能なRouteLocationRawへ変換します
-         * @param {string|import('vue-router').RouteLocationRaw} rawUrl - url
-         * @param {import('vue-router').RouteLocationNormalizedLoaded} base - 基準ルート
-         * @returns {import('vue-router').RouteLocationRaw} 解決用のRouteLocationRaw
+         * @param rawUrl - url
+         * @param base - 基準ルート
+         * @returns 解決用のRouteLocationRaw
          */
-        const resolveUrlLocation = (rawUrl, base) => {
+        const resolveUrlLocation = (
+            rawUrl: string | import('vue-router').RouteLocationRaw,
+            base: import('vue-router').RouteLocationNormalizedLoaded
+        ): import('vue-router').RouteLocationRaw => {
             if (typeof rawUrl === 'string') {
                 return rawUrl;
             }
@@ -2109,7 +2268,7 @@ const createLayergeRouter = (options) => {
             navigationToken += 1;
             const token = navigationToken;
 
-            $layerge.pending = {
+            const pendingEntry: PendingWithTrace = {
                 id: id,
                 token: token,
                 presenterName: presenterName,
@@ -2126,6 +2285,8 @@ const createLayergeRouter = (options) => {
                 traceSettled: false
             };
 
+            $layerge.pending = pendingEntry;
+
             try {
                 decisionTraceStore.push(traceId, 'applyRouter', {kind: kind});
             } catch {
@@ -2138,7 +2299,7 @@ const createLayergeRouter = (options) => {
             try {
                 p = kind === 'push' ? router.push(navigateTo) : router.replace(navigateTo);
             } catch (err) {
-                const pending = $layerge.pending;
+                const pending: PendingWithTrace | null = $layerge.pending;
 
                 if (pending && pending.id === id && pending.token === token) {
                     $layerge.pending = null;
@@ -2162,11 +2323,11 @@ const createLayergeRouter = (options) => {
                 return;
             }
 
-            handle._navPromise = p;
+            (handle as HandleWithNav)._navPromise = p;
 
-            if (p && typeof (/** @type {any} */ (p).catch) === 'function') {
-                /** @type {any} */ (p).catch((err) => {
-                    const pending = $layerge.pending;
+            if (p && typeof (/** @type {any} */ p.catch) === 'function') {
+                /** @type {any} */ p.catch((err) => {
+                    const pending: PendingWithTrace | null = $layerge.pending;
 
                     if (pending && pending.id === id && pending.token === token) {
                         $layerge.pending = null;
@@ -2225,11 +2386,11 @@ const createLayergeRouter = (options) => {
 
     /**
      * attachPresenterApi - router[presenterName] を生やします
-     * @param {string} presenterName - Presenter 名
+     * @param presenterName - Presenter 名
      * @throws {Error} Presenter 名が router と衝突する場合にスロー
-     * @returns {void}
+     * @returns
      */
-    const attachPresenterApi = (presenterName) => {
+    const attachPresenterApi = (presenterName: string): void => {
         if (router[presenterName] !== undefined) {
             throw new Error(`[Layerge] Presenter name conflicts with router property: ${presenterName}`);
         }
@@ -2265,10 +2426,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * routeKey - 背景一致/stack一致の比較キー
-     * @param {import('vue-router').RouteLocationNormalizedLoaded} r - ルート
-     * @returns {string} キー
+     * @param r - ルート
+     * @returns キー
      */
-    const routeKey = (r) => {
+    const routeKey = (r: import('vue-router').RouteLocationNormalizedLoaded): string => {
         if (backgroundCompare === 'path') {
             return r.path;
         }
@@ -2278,10 +2439,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * findStackIndexByTo - stack 内で to と一致する最後の index を探します
-     * @param {import('vue-router').RouteLocationNormalizedLoaded} to - 遷移先
-     * @returns {number} index（見つからなければ -1）
+     * @param to - 遷移先
+     * @returns index（見つからなければ -1）
      */
-    const findStackIndexByTo = (to) => {
+    const findStackIndexByTo = (to: import('vue-router').RouteLocationNormalizedLoaded): number => {
         const key = routeKey(to);
 
         for (let i = $layerge.stack.length - 1; i >= 0; i--) {
@@ -2309,7 +2470,7 @@ const createLayergeRouter = (options) => {
         }
 
         // pending の commit が先（既存の処理）
-        const pending = $layerge.pending;
+        const pending: PendingWithTrace | null = $layerge.pending;
 
         if (pending) {
             // この afterEach が pending の遷移と一致しない場合は何もしない
@@ -2347,7 +2508,10 @@ const createLayergeRouter = (options) => {
                         reason: 'routerFailure'
                     });
                     pending.traceSettled = true;
-                    pending.handle._resolveSettled({status: publicStatus});
+                    // NOTE: 上と同じく、戻り値をそのまま status に入れている（移行前からの挙動）
+                    pending.handle._resolveSettled({
+                        status: publicStatus as unknown as PresenterAsyncResult['status']
+                    });
                 }
 
                 return;
@@ -2427,8 +2591,8 @@ const createLayergeRouter = (options) => {
                         h &&
                         h.state &&
                         typeof h.state === 'object' &&
-                        typeof (/** @type {any} */ (h.state).back) === 'string'
-                            ? /** @type {any} */ (h.state).back
+                        typeof (/** @type {any} */ h.state.back) === 'string'
+                            ? /** @type {any} */ h.state.back
                             : null;
 
                     if (backPath) {
@@ -2500,10 +2664,10 @@ const createLayergeRouter = (options) => {
     /**
      * notifyEnterDoneInternal - enter 完了通知
      * - latest-wins 競合で遅延通知が来ても entryId で無害化する
-     * @param {string} entryId - 対象 entryId
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @returns
      */
-    const notifyEnterDoneInternal = (entryId) => {
+    const notifyEnterDoneInternal = (entryId: string): void => {
         const entry = $layerge.stack.find((x) => x.id === entryId);
 
         if (!entry) {
@@ -2521,10 +2685,10 @@ const createLayergeRouter = (options) => {
     /**
      * notifyLeaveDoneInternal - leave 完了通知
      * - entryId 照合で競合を無害化する
-     * @param {string} entryId - 対象 entryId
-     * @returns {void}
+     * @param entryId - 対象 entryId
+     * @returns
      */
-    const notifyLeaveDoneInternal = (entryId) => {
+    const notifyLeaveDoneInternal = (entryId: string): void => {
         const index = $layerge.leaving.findIndex((x) => x.id === entryId);
 
         if (index < 0) {
@@ -2555,10 +2719,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * closeTopInternal - 一番上の Presenter を閉じます
-     * @param {{restoreUrl?: boolean}|undefined} [options] - オプション
-     * @returns {void}
+     * @param [options] - オプション
+     * @returns
      */
-    const closeTopInternal = (options) => {
+    const closeTopInternal = (options?: {restoreUrl?: boolean} | undefined): void => {
         const top = $layerge.stack[$layerge.stack.length - 1];
 
         if (!top) {
@@ -2570,10 +2734,10 @@ const createLayergeRouter = (options) => {
 
     /**
      * closeAllInternal - 全 Presenter を閉じます
-     * @param {{restoreUrl?: boolean}|undefined} [options] - オプション
-     * @returns {void}
+     * @param [options] - オプション
+     * @returns
      */
-    const closeAllInternal = (options) => {
+    const closeAllInternal = (options?: {restoreUrl?: boolean} | undefined): void => {
         const restoreUrl = options && options.restoreUrl === false ? false : true;
         const backgroundFullPath = $layerge.backgroundRoute ? $layerge.backgroundRoute.fullPath : null;
 
@@ -2658,9 +2822,9 @@ const createLayergeRouter = (options) => {
     $layerge.stackEnabled = defaultStack;
     $layerge.cacheEnabled = defaultCache;
 
-    router.$layerge = $layerge;
-    router.exitPresenterMode = exitPresenterMode;
-    router.getLayergeState = () => {
+    (router as LayergeRouter<P>).$layerge = $layerge;
+    (router as LayergeRouter<P>).exitPresenterMode = exitPresenterMode;
+    (router as LayergeRouter<P>).getLayergeState = () => {
         return {mode: $layerge.mode, depth: $layerge.stack.length};
     };
 
@@ -2718,14 +2882,15 @@ const createLayergeRouter = (options) => {
 
             originalInstall(app);
 
-            app.provide('$layerge', router.$layerge);
-            app.provide(LayergeKey, router.$layerge);
+            app.provide('$layerge', (router as LayergeRouter<P>).$layerge);
+            app.provide(LayergeKey, (router as LayergeRouter<P>).$layerge);
             app.component('LayergeView', LayergeView);
             app.component('LayergeTransition', LayergeTransition);
         };
     }
 
-    return router;
+    // router 自体に Presenter API を生やして返す（同一インスタンス）
+    return router as LayergeRouter<P>;
 };
 
 export {createLayergeRouter};
