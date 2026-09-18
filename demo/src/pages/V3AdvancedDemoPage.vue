@@ -51,6 +51,8 @@
                 </button>
             </div>
 
+            <div class="Log" data-testid="v3-settled">settled: {{ lastSettled || '-' }}</div>
+
             <div class="Log" data-testid="v3-state">
                 state: {{ state.mode }} / depth={{ state.depth }} | url={{ url }} | lastEntryId={{
                     lastEntryId || '-'
@@ -141,7 +143,16 @@ const openComponent = () => {
 };
 
 const pushWithUrl = () => {
-    router.modal.push(V3LeaveGuardContent, {url: '/modal/v3-guard'});
+    lastSettled.value = '';
+
+    const handle = router.modal.push(V3LeaveGuardContent, {url: '/modal/v3-guard'});
+
+    void handle.settled.then((result) => {
+        // settled は {status: <4 値の文字列>} で解決する契約。
+        // 文字列以外が来た場合は invalid: として可視化する（契約違反の検出用）
+        lastSettled.value =
+            typeof result.status === 'string' ? result.status : `invalid:${JSON.stringify(result.status)}`;
+    });
 
     void nextTick(() => {
         const top = router.$layerge?.stack?.[router.$layerge.stack.length - 1];
@@ -162,6 +173,7 @@ const state = computed(() => router.getLayergeState());
 const url = computed(() => route.fullPath);
 
 const lastEntryId = ref('');
+const lastSettled = ref('');
 
 const asyncLog = ref('');
 

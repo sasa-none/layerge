@@ -22,7 +22,6 @@ import type {
     PendingPresenterNav,
     PresenterHandleInternal,
     PresenterKind,
-    PresenterAsyncResult,
     PresenterMap,
     PresenterPushReplaceOptions
 } from '../types';
@@ -2066,12 +2065,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             });
 
             handle._setActive(false);
-            // NOTE: settleOutcomeInternal は LayergeOutcomePublic（{traceId, status}）を返すが、
-            // ここではその戻り値をそのまま status に入れている（移行前からの挙動）。
-            // 挙動を変えないため、型だけ合わせて現状を維持する。
-            handle._resolveSettled({
-                status: publicStatus as unknown as PresenterAsyncResult['status']
-            });
+            handle._resolveSettled({status: publicStatus.status});
             handle._resolveClosed();
         };
 
@@ -2508,10 +2502,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                         reason: 'routerFailure'
                     });
                     pending.traceSettled = true;
-                    // NOTE: 上と同じく、戻り値をそのまま status に入れている（移行前からの挙動）
-                    pending.handle._resolveSettled({
-                        status: publicStatus as unknown as PresenterAsyncResult['status']
-                    });
+                    pending.handle._resolveSettled({status: publicStatus.status});
                 }
 
                 return;

@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-09-18（B-1 段階 5-a 完了。台帳の契約変更リスクは解消）
+最終更新: 2026-09-18（B-1 段階 5-b 完了。A-11 / A-12 を起票）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -293,6 +293,79 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 ---
 
+### A-11. `settled` が失敗時に不正な値を返す 🔴🔴 **公開前必須。実害のある欠陥です**
+
+段階 5-b（TypeScript 移行）で発見（2026-09-18）。**移行前から存在する実装の欠陥**であり、移行が原因ではありません。
+
+#### 何が起きているか
+
+`settleOutcomeInternal()` は `LayergeOutcomePublic`（= `{traceId, status}`）を返します。ところが `createLayergeRouter.ts` の 2 箇所が、**その戻り値そのものを `status` に入れています。**
+
+```ts
+const publicStatus = settleOutcomeInternal({...});   // {traceId: '...', status: 'failed'}
+handle._resolveSettled({status: publicStatus});      // ← status がオブジェクトになる
+```
+
+結果として `settled` は次の値で解決します。
+
+```js
+{status: {traceId: 'xyz', status: 'failed'}}   // 実際
+{status: 'failed'}                              // 公開契約が約束している形
+```
+
+`_resolveSettled` の呼び出しは全 4 箇所で、**残り 2 箇所（`'superseded'` / `'completed'`）は文字列を正しく渡しています。**壊れているのは失敗系の 2 箇所だけです。
+
+#### 利用者から見た影響
+
+**`pushAsync()` / `closeAsync()` / `handle.settled` は、失敗を検知するための API です。その API が失敗時にだけ壊れています。**
+
+```js
+const result = await router.modal.pushAsync(target);
+if (result.status === 'failed') {   // ← 永遠に false になる
+    // 失敗時の処理が実行されない
+}
+```
+
+公開ステータスを 4 値に固定するという契約（[motivation.ja.md](./motivation.ja.md) の原則 3、および `PresenterAsyncResult` の型宣言）に違反しています。
+
+#### なぜテストをすり抜けたのか（重要）
+
+**テストの命名が、検証している内容より広いことを約束していました。**
+
+| テスト | 名前が主張すること | 実際に検証していること |
+|---|---|---|
+| `e2e/v4_failed_settle_reject_push.spec.js` | 「router.push の reject が **settled as failed** になる」 | **コンソールログ行** `[layerge] outcome ... status=failed` と DecisionTrace のダンプ。`settled` の解決値は**一切見ていない** |
+| `e2e/v4_failed_settle_throw_guard.spec.js` | 同上 | 同上 |
+
+単体テスト（`tests/v3x_async_api.test.js`）は `settled` の解決値を厳密に検証していますが、**対象が `completed` / `superseded` / `aborted` の 3 値のみ**です。
+
+> **`settled` について `failed` を検証しているテストは 1 つも存在しません。そして壊れているのは `failed` の経路だけです。**
+
+観測系（ログ・トレース）の実装は正しく、公開 API の経路だけが誤っています。テストは観測系しか見ていなかったため、両者の乖離が検出されませんでした。
+
+#### 対応方針
+
+段階 4-b と同じ扱い（独立コミット + テスト + CHANGELOG）とします。ただし**是正はコードだけでは足りません。**
+
+1. **実装の修正** — 2 箇所を `{status: publicStatus.status}` に是正する。段階 5-b で入れた `as unknown as` のキャストと注記コメントは不要になります
+2. **単体テストの追加** — `settled` が `{status: 'failed'}` に解決されることを固定する。**現在この経路を覆うテストは存在しません**
+3. **E2E の是正** — 上記 2 本の spec に、`settled` の解決値そのものを検証する assertion を追加する。**ログ行だけを見て「settled as failed」と名乗るのをやめること。**これをしないと同じ欠陥が再発しても再び検出されません
+4. **`CHANGELOG.md` に記録** — 利用者から見える修正です
+
+> **この項目は npm 公開の前に解消してください。**壊れているのが「失敗を知るための API」である以上、利用者は失敗に気づけません。
+
+---
+
+### A-12. `finalizeOutcome` が第 3 引数を捨てている 🟡
+
+段階 5-b で発見。呼び出し側 1 箇所が `finalizeOutcome('failed', 'routerNavigationFailed', err)` と error を渡していますが、関数は 2 引数しか使っておらず、**error は捨てられています。**
+
+診断情報が失われるだけで、公開契約には影響しません。段階 5-b では型として第 3 引数を宣言し、実態を可視化したうえで未使用のまま残してあります。
+
+**A-11 と同じコミットに混ぜないでください。**重大度が異なり、混ぜると A-11 の修正内容が読みにくくなります。
+
+---
+
 ## 優先度 B — 公開直後に着手すべきもの
 
 ### B-1. TypeScript への全面移行 🔴 **公開前必須へ変更**
@@ -323,8 +396,10 @@ README の Public API セクションを実装基準で全面改訂しました�
 | 段階 4 `composables/` | ✅ 完了（`91626f3`。5 ファイル、`useLayergeLink` は 447 行） |
 | 段階 4-b `noopHandle` 是正 | ✅ 完了（`b2dbdec`。単体テスト 3 件と CHANGELOG を含む） |
 | 段階 5-a `types.ts` に A 分類 4 型 | ✅ 完了（`ab83e96`。**ジェネリック維持は決着。**5 型を `index.d.ts` と機械照合し全件一致、Cowork 側でも独立に照合済み） |
-| 段階 5-b `createLayergeRouter.ts` | 次。2,731 行。最難関 |
-| 段階 6〜8 | 未着手 |
+| 段階 5-b `createLayergeRouter.ts` | ✅ 完了（`42aa9e7`。`any` ゼロ。`dist` 構造比較で挙動変化 3 件を検出・差し戻し） |
+| **A-11 の是正** | **次。段階 6 より優先**（公開前必須の欠陥） |
+| 段階 6 `.vue` | A-11 の後 |
+| 段階 7〜8 | 未着手 |
 
 > **仕様書を 2026-09-18 に修正しました。**段階 0 完了時の指摘により、各段階の完了条件に `pnpm typecheck` が加わっています。
 > あわせて `no-explicit-any` の運用と `strict` の引き上げ時期も確定しました。**段階 1 の着手前に仕様書を読み直してください。**
