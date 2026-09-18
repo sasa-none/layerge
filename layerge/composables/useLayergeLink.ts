@@ -104,6 +104,10 @@ const safeCallHook = (
 
 /**
  * resolveInvokerElement - invoker に使用する DOM を決定します
+ *
+ * refEl のフォールバックは生きています（ROADMAP A-14 で実測）。
+ * handler を イベント無しで呼んだ場合（利用者が programmatic に呼ぶ経路）は
+ * event.currentTarget が無いため、**refEl だけが唯一の解決手段**になります。
  * @param refEl - ref で捕捉した要素
  * @param event - click/keydown イベント
  * @returns DOM
@@ -210,6 +214,15 @@ const useLayergeLink = (
 
     /**
      * elRef - trigger DOM を捕捉します
+     *
+     * これは bindings 経由で利用者に渡され、`v-bind="bindings"` で展開されます。
+     * その際 Ref オブジェクトのまま vnode の ref に渡るため、Vue が要素を代入します
+     * （マウント直後に HTMLElement が入ることを ROADMAP A-14 で実測済み）。
+     *
+     * NOTE: LayergeLink.vue の `:ref="elRef"` は**別物**でした。テンプレートで
+     * setup バインディングを直接参照するとコンパイラが unwrap し、常に null が
+     * 渡っていたため、A-13 で削除しています。違いは「Ref をテンプレートが解決するか、
+     * 利用者が v-bind で展開するか」です。
      */
     const elRef = ref<HTMLElement | null>(null);
 

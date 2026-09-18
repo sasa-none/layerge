@@ -341,7 +341,12 @@ export interface LayergeLinkHooks {
  * UseLayergeLinkBindings - DOM にバインドする props
  */
 export interface UseLayergeLinkBindings {
-    /** trigger DOM 捕捉用 ref */
+    /**
+     * trigger DOM 捕捉用 ref
+     *
+     * `v-bind="bindings"` で展開すると、マウント後に対象要素が入ります
+     * （ROADMAP A-14 で実測済み）。invoker をイベント無しで解決する際に使われます。
+     */
     ref: Ref<HTMLElement | null>;
     /** 任意の属性（computeAttrs の結果など） */
     [key: string]: unknown;
