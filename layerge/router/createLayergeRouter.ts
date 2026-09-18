@@ -1588,15 +1588,19 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             // ignore
         }
 
-        // NOTE: 呼び出し側の 1 箇所が第 3 引数に error を渡しているが、本関数は
-        // それを使っていない（移行前からの挙動）。挙動を変えないため受け取るだけにする。
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        /**
+         * finalizeOutcome - close の Outcome を確定します
+         * @param status - 内部ステータス
+         * @param reason - 失敗理由（dev-only）
+         * @param error - 例外（dev-only。failed のときスタックが出力される）
+         */
         const finalizeOutcome = (status: OutcomeInternalStatus, reason?: string, error?: unknown): void => {
             settleOutcomeInternal({
                 traceId: traceId,
                 stage: 'close',
                 status: status,
-                reason: reason
+                reason: reason,
+                error: error
             });
         };
 

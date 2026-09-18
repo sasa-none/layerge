@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Dev diagnostics no longer drop the navigation error when closing a presenter. If URL restore fails during `close()`, the `[Layerge][error]` line now carries the actual error (with its stack) instead of only the outcome summary. Development-only output; no public API change.
+
 - `settled` (and therefore `pushAsync()` / `closeAsync()`) now resolves with a plain status string on failure. Two failure paths previously put the whole internal outcome object into `status`, so `settled` resolved with `{status: {traceId: '...', status: 'failed'}}` instead of `{status: 'failed'}`. Code such as `if (result.status === 'failed')` never matched, which meant **failures could not be detected through the API whose purpose is to report them**. Success paths were unaffected.
 
 - `usePresenter()` now returns a no-op handle that includes `settled` when called outside a presenter. It resolves immediately with `{status: 'aborted'}`, matching the `PresenterHandle` contract that `index.d.ts` already declares. Previously `settled` was `undefined` there, so `usePresenter().handle.settled.then(...)` threw outside a presenter and callers were forced to branch — which defeats the purpose of the no-op handle.
