@@ -13,7 +13,18 @@ import {useRouter} from 'vue-router';
 import type {RouteLocationRaw} from 'vue-router';
 import {isNodeDevEnv} from '../internals/env.js';
 import {LayergeKey} from '../internals/keys';
-import type {LayergeStore} from '../types';
+import type {LayergeStore, PresenterHandle, PresenterTarget} from '../types';
+
+/**
+ * PresenterApiLike - router に生やされた Presenter API の呼び出し面
+ *
+ * Router 型は Presenter 名のインデックスを持たないため、参照側で形を与えます。
+ */
+interface PresenterApiLike {
+    open?: (target: PresenterTarget, options?: object) => PresenterHandle;
+    push?: (target: PresenterTarget, options?: object) => PresenterHandle;
+    replace?: (target: PresenterTarget, options?: object) => PresenterHandle;
+}
 
 /**
  * LayergeLink - RouterLink互換の最小Link導線
@@ -163,7 +174,7 @@ const callPresenter = async (kind: 'push' | 'replace' | 'open', event?: unknown)
             : rawTarget;
 
     // Layerge API (presenter) - may be undefined.
-    const api = router?.[props.presenter];
+    const api = (router as unknown as Record<string, PresenterApiLike | undefined>)?.[props.presenter];
 
     /**
      * url option is supported for push/replace.
@@ -283,13 +294,13 @@ const callPresenter = async (kind: 'push' | 'replace' | 'open', event?: unknown)
  * handler - to に束縛された push/replace/open
  */
 const handler = {
-    open: (event) => {
+    open: (event?: unknown) => {
         callPresenter('open', event);
     },
-    push: (event) => {
+    push: (event?: unknown) => {
         callPresenter('push', event);
     },
-    replace: (event) => {
+    replace: (event?: unknown) => {
         callPresenter('replace', event);
     }
 };
@@ -299,7 +310,7 @@ const handler = {
  * @param {unknown} [event] - click/keydown event
  * @returns {void}
  */
-const navigate = (event) => {
+const navigate = (event?: unknown): void => {
     /** @type {'push'|'replace'|'open'} */
     const kind = props.action === 'replace' || props.action === 'open' ? props.action : 'push';
     handler[kind](event);
@@ -310,7 +321,7 @@ const navigate = (event) => {
  * @param {MouseEvent} event
  * @returns {boolean}
  */
-const shouldBypassPrevent = (event) => {
+const shouldBypassPrevent = (event: MouseEvent): boolean => {
     // component-mode does not have a meaningful browser navigation target
     if (mode.value === 'component') {
         return false;
@@ -332,7 +343,7 @@ const shouldBypassPrevent = (event) => {
  * onClick - click 導線
  * @param {MouseEvent} event
  */
-const onClick = (event) => {
+const onClick = (event: MouseEvent): void => {
     if (props.disabled) {
         event?.preventDefault?.();
         return;
@@ -351,7 +362,7 @@ const onClick = (event) => {
  * onKeydown - keyboard 導線
  * @param {KeyboardEvent} event
  */
-const onKeydown = (event) => {
+const onKeydown = (event: KeyboardEvent): void => {
     if (props.disabled) {
         return;
     }

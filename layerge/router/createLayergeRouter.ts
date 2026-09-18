@@ -10,6 +10,7 @@ import {createId} from '../core/id';
 import {createInternalOutcome, projectOutcomeToPublic} from '../internals/outcome.js';
 import type {LayergeOutcomePublic, OutcomeInternalStatus, OutcomeStage} from '../internals/outcome.js';
 import {createDecisionTraceStore, MAX_TRACES_DEFAULT} from '../internals/decisionTrace.js';
+import type {DecisionTrace} from '../internals/decisionTrace.js';
 import {LayergeKey} from '../internals/keys';
 import LayergeView from '../view/LayergeView.vue';
 import LayergeTransition from '../view/LayergeTransition.vue';
@@ -20,6 +21,8 @@ import type {
     LayergeControlledHookContext,
     LayergeRouter,
     PendingPresenterNav,
+    PresenterApi,
+    PresenterDefinition,
     PresenterHandleInternal,
     PresenterKind,
     PresenterMap,
@@ -46,6 +49,14 @@ interface ProcessLike {
 interface GlobalLike {
     process?: ProcessLike;
     __LAYERGE_DECISION_TRACE_LEVEL?: unknown;
+}
+
+/**
+ * DecisionTraceGlobals - dev-only のデバッグ導線（globalThis に生やす）
+ */
+interface DecisionTraceGlobals {
+    __layergeGetDecisionTraces?: () => DecisionTrace[];
+    __layergeDumpDecisionTraces?: (options?: {pretty?: boolean; max?: number}) => string;
 }
 
 /**
@@ -195,7 +206,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         ]);
 
         /** @type {Record<string, unknown>} */
-        const out = {};
+        const out: Record<string, unknown> = {};
 
         if (!data || typeof data !== 'object') {
             return out;
@@ -262,7 +273,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @returns
      */
     const installDecisionTraceGlobalsInternal = (): void => {
-        const g = /** @type {any} */ globalThis;
+        const g = globalThis as typeof globalThis & DecisionTraceGlobals;
         const shouldEnable = shouldEnableDecisionTraceGlobalsInternal();
 
         if (!shouldEnable) {
@@ -445,7 +456,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             return;
         }
 
-        const g = /** @type {any} */ globalThis;
+        const g = globalThis as typeof globalThis & DecisionTraceGlobals;
         if (typeof g.__layergeDumpDecisionTraces !== 'function') {
             return;
         }
@@ -541,8 +552,10 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     /** @type {Record<'beforeOpen'|'beforeClose'|'beforeNavigate', number>} */
     const controlledHookTokens = {beforeOpen: 0, beforeClose: 0, beforeNavigate: 0};
 
-    /** @type {Record<'beforeOpen'|'beforeClose'|'beforeNavigate', AbortController|null>} */
-    const controlledHookControllers = {beforeOpen: null, beforeClose: null, beforeNavigate: null};
+    const controlledHookControllers: Record<
+        'beforeOpen' | 'beforeClose' | 'beforeNavigate',
+        AbortController | null
+    > = {beforeOpen: null, beforeClose: null, beforeNavigate: null};
 
     /**
      * hasControlledHook - controlledHooks が指定されているか
@@ -593,7 +606,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         const signal = controller.signal;
         const safeCtx = Object.assign({}, ctx, {signal: signal});
 
-        const normalize = (value) => {
+        const normalize = (value: unknown) => {
             if (controlledHookTokens[hookName] != token) return {ok: false, signal: signal};
             if (signal.aborted) return {ok: false, signal: signal};
             if (value === false) return {ok: false, signal: signal};
@@ -879,10 +892,10 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     // displayオプションが指定されている場合はそのcache設定、なければoptions.cacheの真偽値
     const defaultCache = defaultFromDisplay ? defaultFromDisplay.cache : options.cache === true;
 
-    const normalizedPresenters = {};
+    const normalizedPresenters: Record<string, PresenterDefinition> = {};
 
     for (const name of Object.keys(presenters)) {
-        const def = presenters[name];
+        const def = (presenters as Record<string, PresenterDefinition>)[name];
 
         // Presenter定義が存在しない、またはcomponentが未定義の場合はエラー
         if (!def || !def.component) {
@@ -1079,7 +1092,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
 
     // demo/real-world safety: exit presenter mode only after a navigation is confirmed
     let exitOnNextSuccess = false;
-    let exitTargetFullPath = null;
+    let exitTargetFullPath: string | null = null;
 
     /**
      * staleNavs - latest-wins で「置き換えられた旧ナビ」の記録
@@ -2087,12 +2100,14 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             });
         };
 
-        const runMaybeAsync = (result, cb) => {
-            if (result && typeof result.then === 'function') {
-                result.then(cb);
+        const runMaybeAsync = <T>(result: T | Promise<T>, cb: (value: T) => void): void => {
+            const thenable = result as Promise<T>;
+
+            if (result && typeof thenable.then === 'function') {
+                thenable.then(cb);
                 return;
             }
-            cb(result);
+            cb(result as T);
         };
 
         // open(RouteLocationRaw) については view-only の警告を出す（v2互換）
@@ -2389,11 +2404,13 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * @returns
      */
     const attachPresenterApi = (presenterName: string): void => {
-        if (router[presenterName] !== undefined) {
+        const routerAsMap = router as unknown as Record<string, PresenterApi | undefined>;
+
+        if (routerAsMap[presenterName] !== undefined) {
             throw new Error(`[Layerge] Presenter name conflicts with router property: ${presenterName}`);
         }
 
-        router[presenterName] = {
+        routerAsMap[presenterName] = {
             push: (target, options) => {
                 return presenterNavigate(presenterName, 'push', target, options);
             },
@@ -2839,7 +2856,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
     // - leaveGuard 登録entryの dirty/pending を参照し、1つでも存在する場合のみ有効化
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
         /** @type {((e: BeforeUnloadEvent) => void)|null} */
-        let handler = null;
+        let handler: ((e: BeforeUnloadEvent) => void) | null = null;
 
         __layergeSubscribeBeforeUnload((needed) => {
             if (!needed) {

@@ -2,7 +2,7 @@
 
 Layerge is a Vue Router extension that adds **presenter-style navigation** (overlay / stacked overlays) with a minimal API.
 
-- Ships as **JavaScript + JSDoc** with hand-maintained type declarations. TypeScript source is planned.
+- Written in **TypeScript**. Type declarations are generated from the source at build time, for both ESM and CJS consumers.
 - Presenter behavior is configured with a single `display` option (`stack`/`cache` remain for compatibility).
 - URL integration uses `url`; `mountPreset` controls mounting; `controlledHooks` can cancel operations.
 - This README is the canonical guide. A VitePress docs site is planned later.

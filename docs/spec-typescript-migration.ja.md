@@ -396,6 +396,44 @@ JSDoc 規約は `any` を原則禁止としていますが、`createLayergeRoute
 
 **方針:** 段階 0 では `strict` を緩めに始め、段階が進むごとに引き上げる。**ただし公開面（`index.d.ts` に出る型）には `any` を出さないことを絶対条件とする。**内部実装の厳密さと公開契約の厳密さを分けて考えてください。
 
+#### 段階 8 での引き上げ結果（2026-09-18 / 受け入れ条件 9 の記録）
+
+フラグごとに個別に有効化して実測しました。結果は次のとおりです。
+
+| フラグ | 状態 | 備考 |
+|---|---|---|
+| `noImplicitThis` | **true** | 無修正で通過 |
+| `strictBindCallApply` | **true** | 無修正で通過 |
+| `useUnknownInCatchVariables` | **true** | 無修正で通過 |
+| `strictFunctionTypes` | **true** | 無修正で通過 |
+| `noImplicitAny` | **true** | 51 件を修正して達成 |
+| `strictNullChecks` | **false** | 28 件が残る（下記） |
+| `strictPropertyInitialization` | **false** | `strictNullChecks` への依存（単独では有効化できない） |
+
+`any` は実装にも公開型にも 1 件もありません。`no-explicit-any` の抑止コメントも使っていません。
+
+##### `strictNullChecks` を false のまま残す理由
+
+28 件のうち **13 件が vue-router の型モデル差**に起因します。残り 15 件は通常の null 処理（`entry` / `_invokers` / 配列アクセス）で、個別に対処可能です。
+
+```
+Argument of type 'RouteLocationResolvedGeneric' is not assignable to
+parameter of type 'RouteLocationNormalizedLoadedGeneric'.
+  Types of property 'name' are incompatible.
+    Type 'RouteRecordNameGeneric | null' is not assignable to type 'RouteRecordNameGeneric'.
+```
+
+`router.resolve()` が返す `RouteLocationResolved` は `name` が `null` を取り得ますが、公開型が使う `RouteLocationNormalizedLoaded` は取りません。**`strictNullChecks` を有効にすると、この 2 つが非互換になります。**
+
+解消するには次のいずれかが必要です。
+
+1. **公開型 `PresenterEntry.route` / `PendingPresenterNav.route` を `RouteLocationResolved` へ変更する** — 手書き `index.d.ts` は `RouteLocationNormalizedLoaded` を宣言しており、**契約変更にあたります**（受け入れ条件 6 / 8 に抵触）
+2. **13 箇所をキャストで塞ぐ** — 型モデルの差を隠すだけで、`strictNullChecks` 本来の利益（null の取り違えの検出）がその範囲で失われます
+
+**どちらも「仕上げ」の範囲を超える判断を含むため、実装側では選ばず false のまま残しました。**公開契約の変更を伴うため、判断が必要です。
+
+> 残り 15 件の通常の null 処理は対処可能ですが、フラグは all-or-nothing のため、13 件を解決しない限り有効化できません。
+
 #### `@typescript-eslint/no-explicit-any` との関係（2026-09-18 決定）
 
 段階 0 で導入された `typescript-eslint` の `recommended` は、`no-explicit-any` を **error** としています。これは上記の方針（内部では `any` を許容し得る）より厳しい設定です。
@@ -430,7 +468,25 @@ JSDoc 規約は `any` を原則禁止としていますが、`createLayergeRoute
 > **特に注意:** `usePresenterLeaveGuard` の宣言（A-5 / コミット `08a4065` で追加）は手書きであり、
 > **`tsc` による検証を一度も受けていません。**他の宣言より誤りの可能性が高いため、差分レビューで重点的に確認してください。
 
-#### 既知の差分台帳（2026-09-18 作成）
+#### 既知の差分台帳 ✅ **全項目が決着しました（段階 7 / `79375a3`）**
+
+段階 7 の差分レビューは、手書き `index.d.ts` を凍結し、生成物との**相互代入可能性**を型レベルで機械照合する方法で実施されました（目視ではありません）。
+
+| 結果 | 件数 |
+|---|---|
+| 公開型 25 + 公開値 6 = 31 件のうち**完全一致** | **26 件** |
+| 差分 | 5 件。根は `LayergeStore` と `PresenterEntry` の 2 つで、残る 3 件（`LayergeRouter` / `createLayergeRouter` / `usePresenter`）はそこからの波及。**すべて 6-4 の決定による意図した差分** |
+
+**契約変更は 1 件も発生していません**（受け入れ条件 6 を満たします）。
+
+台帳に無い差分が 1 件検出され、**改善**と判定されました。`LayergeStore.presenters` の値型が、手書きでは `{component; stack; cache; display}` の全必須でしたが、実装は利用者が渡した `PresenterDefinition` をそのまま保持するため任意が正しい形です。**手書きが不正確でした。**
+
+> **台帳を用意した効果が出ています。**レビューは「台帳に載っていない差分」1 件の判定に集中でき、残りは事前の判定を確認するだけで済みました。
+
+---
+
+#### 台帳（作成時の記録）
+
 
 段階 1 の着手前調査で、**生成物と手書き `index.d.ts` の間に出ることが分かっている差分**を先に分類しておきます。
 **段階 7 のレビューは、この台帳に載っていない差分＝想定外のものに集中してください。**台帳に載っているものは判定済みです。

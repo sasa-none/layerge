@@ -220,7 +220,7 @@ const PresenterLayer = defineComponent({
                             RouterView,
                             {route: props.entry.route},
                             {
-                                default: ({Component}) => {
+                                default: ({Component}: {Component?: Component}) => {
                                     if (!Component) {
                                         return null;
                                     }
