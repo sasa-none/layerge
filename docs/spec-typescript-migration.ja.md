@@ -173,13 +173,33 @@ E2E が通らない状態で次の段階へ進んではいけません。
 
 ### 段階 2: `layerge/internals/`
 
-`env` / `keys` / `id` / `outcome` / `decisionTrace` / `devMetrics`。依存が最も少ない層です。
+`env` / `keys` / `outcome` / `decisionTrace` / `devMetrics` の 5 ファイル。依存が最も少ない層です。
+
+> **2026-09-18 訂正:** 当初の本書は本項の対象に `id` を挙げていましたが、**誤りでした。**`id` は `layerge/core/id.js` にあり、段階 3 の対象です。
 
 - `internals` は**内部専用**です。公開エクスポートに昇格させないこと
 
 ### 段階 3: `layerge/core/`
 
-`store` / `handle` / `id`。
+`store` / `handle` / `id` の 3 ファイル。
+
+#### 先に決めておくこと: `_kept` と `_keptEntries` の不一致（2026-09-18 決定）
+
+段階 2 で、**型と実装が食い違っている箇所**が見つかりました。
+
+| | 名前 | 実体 |
+|---|---|---|
+| 実装が読み書きするフィールド | **`_kept`** | `core/store.js:14` で初期化、`createLayergeRouter.js:1735-1739`、`LayergeView.vue:50` で使用 |
+| `types.ts` の `LayergeStore` が宣言するフィールド | **`_keptEntries`** | **どこからも使われていない** |
+
+つまり**型は存在しないフィールドを宣言し、実際に存在するフィールドを宣言していません。**段階 2 では `devMetrics.ts` がキャストで従来どおりの挙動を保っています（範囲外として正しい判断です）。
+
+**決定: 段階 3 で、型を実装に合わせてください。**
+
+- `LayergeStore` の `_keptEntries` を **`_kept` に改める**
+- `devMetrics.ts` のキャストと説明コメントを外す
+- **実装側は変更しないこと。**実装が真であり、型が誤っていました
+- これは型のみの修正であり、挙動は変わりません。5-1（公開 API を変更しない）にも抵触しません（`_` 接頭辞の内部フィールドです）
 
 ### 段階 4: `layerge/composables/`
 
@@ -300,6 +320,7 @@ JSDoc 規約は `any` を原則禁止としていますが、`createLayergeRoute
 | `PresenterEntry` / `LayergeStore` に**内部フィールドが出現する**（`_mountKey` ほか） | **要対処**（契約変更ではない） | 6-4 の決定（`@internal` + `stripInternal` 等）で公開面から除外すること。**除外せずに公開すると利用者が依存し始めます** |
 | `PresenterHandleInternal` / `PendingPresenterNav` が公開面に出る | **要対処** | 同上。内部型であり公開しません |
 | `LayergeStore.pending` の型が `PendingPresenterNav \| null` として出る（手書きは `/** @internal */ pending: unknown`） | **要対処** | 段階 1 完了時の観察（2026-09-18）。`types.ts` 側には内部である旨の記載が無いため `@internal` が付いていません。**そのままだと内部型 `PendingPresenterNav` が公開面に漏れます。**6-4 の決定時に、このフィールドの扱いもあわせて決めてください |
+| `LayergeStore` に `_keptEntries` が出る（実装には存在しないフィールド） | **要対処** | 段階 3 で `_kept` に是正すること（上記の決定）。是正前に段階 7 へ到達した場合、**存在しないフィールドを公開型が宣言している**ことになります |
 | `CreateLayergeRouterOptions` の**ジェネリック有無** | **要確認** | 手書きは `<P extends PresenterMap = PresenterMap>`、`types.js` は非ジェネリック。**ジェネリックが失われると `router.modal` の型が効かなくなるため、契約変更に当たります。**段階 5 で必ずジェネリックを保つこと |
 
 最後の 1 件は特に重要です。**`PresenterApis<P>` によるキー単位の型付けが失われると、利用者側で `router.modal.push()` が型エラーになります。**段階 5 の着手時に真っ先に確認してください。

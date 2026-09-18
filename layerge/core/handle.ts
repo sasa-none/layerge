@@ -1,41 +1,35 @@
+import type {PresenterAsyncResult, PresenterHandleInternal} from '../types';
+
 /**
  * createPresenterHandle - PresenterHandleInternalを生成します
- * @param {string} id - Presenterエントリの一意識別子となる内部ID
- * @param {() => void} onClose - Presenterのclose実行時に呼び出されるコールバック関数
- * @returns {import('../types').PresenterHandleInternal} 生成されたPresenterハンドルオブジェクト
+ * @param id - Presenterエントリの一意識別子となる内部ID
+ * @param onClose - Presenterのclose実行時に呼び出されるコールバック関数
+ * @returns 生成されたPresenterハンドルオブジェクト
  */
-const createPresenterHandle = (id, onClose) => {
-    /** @type {boolean} */
+const createPresenterHandle = (id: string, onClose: () => void): PresenterHandleInternal => {
     let active = true;
 
-    /** @type {boolean} */
     let settledDone = false;
 
-    /** @type {import('../types').PresenterAsyncResult|null} */
-    let settledValue = null;
+    let settledValue: PresenterAsyncResult | null = null;
 
-    /** @type {(() => void)|null} */
-    let resolveClosed = null;
+    let resolveClosed: ((value: void | PromiseLike<void>) => void) | null = null;
 
-    /** @type {((value: import('../types').PresenterAsyncResult) => void)|null} */
-    let resolveSettled = null;
+    let resolveSettled: ((value: PresenterAsyncResult) => void) | null = null;
 
-    /** @type {Promise<void>} */
-    const closed = new Promise((r) => {
+    const closed = new Promise<void>((r) => {
         resolveClosed = r;
     });
 
-    /** @type {Promise<import('../types').PresenterAsyncResult>} */
-    const settled = new Promise((r) => {
+    const settled = new Promise<PresenterAsyncResult>((r) => {
         resolveSettled = r;
     });
 
     /**
      * resolveSettledOnce - settled を一度だけ解決します
-     * @param {import('../types').PresenterAsyncResult} value - 結果
-     * @returns {void}
+     * @param value - 結果
      */
-    const resolveSettledOnce = (value) => {
+    const resolveSettledOnce = (value: PresenterAsyncResult): void => {
         if (settledDone) {
             return;
         }
@@ -50,8 +44,7 @@ const createPresenterHandle = (id, onClose) => {
         }
     };
 
-    /** @type {import('../types').PresenterHandleInternal} */
-    const handle = {
+    const handle: PresenterHandleInternal = {
         _id: id,
         _resolveSettled: resolveSettledOnce,
         _resolveClosed: () => {

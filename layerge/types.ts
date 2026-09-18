@@ -243,7 +243,7 @@ export interface LayergeStore {
      * keepMounted のための保持エントリ（v3）
      * @internal
      */
-    _keptEntries?: PresenterEntry[];
+    _kept?: PresenterEntry[];
     /**
      * 強制終了
      * @internal

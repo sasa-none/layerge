@@ -23,10 +23,7 @@ export interface LayergeDevMetrics {
 const __layergeGetDevMetrics = (store: LayergeStore): LayergeDevMetrics => {
     const stackCount = Array.isArray(store.stack) ? store.stack.length : 0;
 
-    // 実装が保持しているのは _kept で、LayergeStore が宣言しているのは _keptEntries。
-    // 両者の不一致は移行前から存在するため、ここでは挙動を変えずに読み出す。
-    const storeWithKept = store as LayergeStore & {_kept?: unknown[]};
-    const keptCount = Array.isArray(storeWithKept._kept) ? storeWithKept._kept.length : 0;
+    const keptCount = Array.isArray(store._kept) ? store._kept.length : 0;
 
     const leavingCount = Array.isArray(store.leaving) ? store.leaving.length : 0;
 
