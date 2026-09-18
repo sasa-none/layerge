@@ -446,20 +446,57 @@ export interface LayergeControlledHooks {
 }
 
 /**
- * CreateLayergeRouterOptions
+ * PresenterApi - Presenter 1 つ分の操作 API
  */
-export interface CreateLayergeRouterOptions {
+export interface PresenterApi {
+    push(target: PresenterTarget, options?: PresenterPushReplaceOptions): PresenterHandle;
+    /** v3.2: opt-in async（確定結果のみ返す） */
+    pushAsync(target: PresenterTarget, options?: PresenterPushReplaceOptions): Promise<PresenterAsyncResult>;
+    replace(target: PresenterTarget, options?: PresenterPushReplaceOptions): PresenterHandle;
+    open(target: PresenterTarget, options?: PresenterOpenOptions): PresenterHandle;
+    /** v3.2: opt-in async（close の確定結果のみ返す） */
+    closeAsync(entryId: string, options?: {restoreUrl?: boolean}): Promise<PresenterAsyncResult>;
+}
+
+/**
+ * PresenterMap - Presenter 名をキーとする定義マップ
+ */
+export type PresenterMap = Record<string, PresenterDefinition>;
+
+/**
+ * PresenterApis - Presenter 定義マップのキーごとに API を生やした形
+ */
+export type PresenterApis<P extends PresenterMap> = {[K in keyof P]: PresenterApi};
+
+/**
+ * LayergeRouter - createLayergeRouter が返す、Presenter API を備えた Router
+ */
+export type LayergeRouter<P extends PresenterMap = PresenterMap> = Router &
+    PresenterApis<P> & {
+        $layerge: LayergeStore;
+        exitPresenterMode: () => void;
+        getLayergeState: () => {mode: 'page' | 'presenter'; depth: number};
+    };
+
+/**
+ * CreateLayergeRouterOptions
+ *
+ * ジェネリック P は presenters のキーを保持し、LayergeRouter 側で
+ * router.<presenterName> の型付けに使われます。**外すと利用者の
+ * router.modal.push() が型エラーになります**（移行仕様書の差分台帳を参照）。
+ */
+export interface CreateLayergeRouterOptions<P extends PresenterMap = PresenterMap> {
     /** 対象の Vue Router */
     router: Router;
+    /** Presenter 定義マップ */
+    presenters?: P;
     /** デバッグログを有効にします（既定: false） */
     debug?: boolean;
-    /** Presenter 定義マップ */
-    presenters?: {[key: string]: PresenterDefinition};
     /** 背景ルートの比較方法（既定: 'fullPath'） */
     backgroundCompare?: 'fullPath' | 'path';
-    /** デフォルトstack（既定: false） */
+    /** @deprecated v1.x互換: display を優先して利用してください */
     stack?: boolean;
-    /** デフォルトcache（既定: false） */
+    /** @deprecated v1.x互換: display を優先して利用してください */
     cache?: boolean;
     /** デフォルト表示モード（推奨）。指定した場合 stack/cache を上書きします。 */
     display?: PresenterDisplay;
