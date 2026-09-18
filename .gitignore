@@ -25,6 +25,12 @@ playwright/.cache/
 .env
 .env.*
 
+# .claude/ のローカル専用ファイル
+# ディレクトリごと無視しない。agents/ や commands/ など、今後チームで
+# 共有すべきものを置く場所になり得るため（CLAUDE.md / AGENTS.md と同じ扱い）
+.claude/launch.json
+.claude/settings.local.json
+
 # エディタ / OS が生成するもの
 .vscode/
 .idea/
