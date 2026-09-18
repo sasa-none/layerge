@@ -1,11 +1,13 @@
-# Layerge v4.0 Spec
+# Outcome model and decision tracing (internal reference)
 
-Layerge v4.0 is **not** a feature-addition release.
-It is an **internal cleanup / normalization** phase that keeps v3’s public contract intact while improving debuggability and long-term safety.
+> **This document is an internal reference for maintainers.** It describes machinery that is deliberately **not** part of the public API.
+> The user-facing view of the same subject is the `PresenterAsyncResult` section and the "Debugging" section of the [README](../../README.md).
+>
+> **Renamed from `docs/v4.0-spec.md` on 2026-09-18.** The old name referred to an internal design phase, not to a package version — the published package is `1.0.0`. The contract described here is current.
 
-## 0. Definition of v4.0
+## 0. What this covers
 
-v4.0 must achieve the following **without expanding the public surface**:
+The rules below hold **without expanding the public surface**:
 
 - Normalize the internal **Outcome** model
 - Freeze the meaning of `aborted/blocked/superseded` to prevent misinterpretation
@@ -15,23 +17,23 @@ v4.0 must achieve the following **without expanding the public surface**:
 
 ---
 
-## 1. Non‑negotiable guardrails (inherited from v3.x)
+## 1. Non‑negotiable guardrails (inherited from the public contract)
 
-These constraints are frozen in v4.0:
+These constraints are frozen:
 
 - Do **not** add public state (e.g. no new `EntryContext` fields)
 - Layerge does **not** guarantee or provide UI (no confirm/fallback UI in the library)
 - Do **not** break latest-wins convergence
-- Do **not** add APIs “because convenient” (v4.0 is “no public API additions” in principle)
+- Do **not** add APIs “because convenient” (no public API additions, as a principle)
 - Exceptions must not be “thrown at users” as a contract; use an observation / convergence model
 
 ---
 
-## 2. Frozen v4.0 spec
+## 2. Frozen spec
 
 ### 2‑1. A: Internal Outcome normalization (no public expansion)
 
-Public (user-facing) status remains v3 compatible and stays at **4** values:
+The public (user-facing) status stays at **4** values:
 
 - `completed | aborted | failed | superseded`
 
@@ -56,7 +58,7 @@ Why: expanding public statuses tends to trigger hook expansion and contract bloa
 
 ### 2‑2. B: Frozen meaning of `aborted/blocked/superseded`
 
-These definitions are frozen in v4.0:
+These definitions are frozen:
 
 - `blocked`: canceled by `controlledHooks` (`beforeOpen/beforeNavigate/beforeClose`)
 - `aborted`: canceled by leave guard / confirm UI (e.g. user cancel)
@@ -183,14 +185,14 @@ DecisionTrace must be bounded by count limits (ring buffers):
 
 ---
 
-## 3. Where the v4.0 internals live (implementation hint)
+## 3. Where these internals live
 
-v4.0 does not add public API.
+This machinery adds no public API.
 Internal-only modules are kept under `layerge/internals/` and are not exported:
 
-- `layerge/internals/outcome.js`
-- `layerge/internals/decisionTrace.js`
-- `layerge/internals/devMetrics.js`
+- `layerge/internals/outcome.ts`
+- `layerge/internals/decisionTrace.ts`
+- `layerge/internals/devMetrics.ts`
 
 This layout is intentional to avoid encouraging external usage.
 
@@ -213,9 +215,9 @@ Recommended defaults:
 
 ---
 
-## 5. Compatibility statement
+## 5. Contract statement
 
 - Public statuses remain: `completed | aborted | failed | superseded`
 - No public state expansion (`EntryContext` stays minimal)
-- No new public APIs are introduced in v4.0
+- No public API is introduced by this machinery
 - Any new debug/inspection capability remains **dev-only** and **internal**

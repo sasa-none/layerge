@@ -106,7 +106,7 @@ Place `LayergeView` once in your app layout:
 
 > In v1, `createLayergeRouter()` automatically wires provide / global registration via Vue Router's `install()`.
 
-## Everyday usage (v1.x)
+## Everyday usage
 
 In most apps you only need **these two helpers**:
 
@@ -442,7 +442,18 @@ const {bindings, handlers} = useLayergeLink(() => import('./Settings.vue'));
 
 Returns `{bindings, handler, handlers}` — `handler` and `handlers` are the same object, kept for compatibility. Each exposes `open` / `push` / `replace`.
 
-The optional `hooks` argument accepts `beforeOpen`, `opened`, `entered`, `openFailed`, `beforeClose`, `closed`, `closeFailed` and `settled`.
+The optional `hooks` argument accepts `beforeOpen`, `opened`, `entered`, `openFailed`, `beforeClose`, `closed`, `closeFailed` and `settled`. Each receives the `entryId`; you never supply it yourself.
+
+**`opened` and `entered` are not the same moment**, and the difference matters:
+
+| Hook | Fires |
+|---|---|
+| `opened` | After the open call, on the next tick — rendering has progressed. |
+| `entered` | When the entry reaches `phase: 'active'` — the overlay can be treated as a settled DOM element. |
+
+If you need to focus something inside the overlay, use `entered`.
+
+> `useLayergeLink()` works without any `provide` on your side. It uses the injected store when one is available and falls back to `router.$layerge` otherwise.
 
 ## Components
 
@@ -477,6 +488,7 @@ Notes:
 - With `prevent: false` in route mode, Ctrl/Cmd-click and non-left-click fall through to normal browser link behavior.
 - In route mode with `url`, the link navigates to `url` first and then opens `to` view-only, so `to` is rendered while the address bar shows `url`.
 - `Enter` and `Space` activate the link.
+- **Forward restoration applies to `push` only.** An overlay opened with `action="push"` is restored when the user goes Back and then Forward. `replace` and `open` are deliberately excluded, because restoring them has no unambiguous meaning.
 
 ## display / stack / cache
 
@@ -497,7 +509,7 @@ You can still configure `stack` and `cache` as before.
 - `cache:true` requires `stack:true` (otherwise it throws)
 - If both `display` and `stack/cache` are provided, **`display` wins**
 
-## Constraints (v1)
+## Constraints
 
 - `open()` does **not** navigate.
     - If `target` is `RouteLocationRaw`, Layerge only guarantees an existence check (matched>0).
@@ -511,7 +523,20 @@ You can still configure `stack` and `cache` as before.
     - Dev only: warns when `debug:true`.
     - Prod: silently ignored.
 
-## Responsibility boundary (v1.x)
+## Environment support
+
+What Layerge guarantees depends on the environment. **This matrix is part of the contract.**
+
+| Environment | Contract |
+|---|---|
+| Server-side rendering (in progress) | **Out of scope.** Calls become a no-op with a development warning. Layerge must not crash, but nothing is rendered. |
+| After hydration | **Guaranteed.** |
+| Concurrency in one tab | **Guaranteed** — latest wins. See [Async consistency](#async-consistency). |
+| Multiple tabs | **Undefined.** Layerge does not coordinate across tabs and must not crash; each tab's state is its own. |
+| Router differences | **Partially guaranteed.** Layerge does not absorb behavioral differences between router versions; an unsupported case converges as an observable outcome rather than an exception. |
+| Browser-level events (back/forward, reload) | Integrated through the router. Layerge owns no UX of its own. |
+
+## Responsibility boundary
 
 Layerge intentionally keeps a strict boundary so that apps can freely design UI/UX.
 
@@ -530,18 +555,18 @@ Layerge **does** guarantee:
 - Presenter bindings via `usePresenterBindings()`
 - Transition notifications via `<LayergeTransition>`
 
-## Advanced (v1.x)
+## Advanced
 
 - Mapper / adapter patterns are available for people who want full control.
 - They are **not required** and should not be the default path in docs or examples.
 
-## v2 (out of scope for v1.x)
+## Not provided
 
-Planned but intentionally not implemented in v1.x:
+Layerge does not ship these, and does not plan to:
 
-- Invoker / trigger model
-- Link extensions (`layerge-link`)
-- Generic transition-end helpers (`transitionend` / `animationend`)
+- **Generic transition-end helpers** (`transitionend` / `animationend`). Use `<LayergeTransition>`, or wire the events yourself.
+- **Accessibility automation** (`aria-expanded` / `aria-controls`). The correct values depend on your markup.
+- **UI of any kind** — z-index, CSS, animation, confirm dialogs. See [Responsibility boundary](#responsibility-boundary).
 
 ## Closing semantics
 
@@ -563,7 +588,7 @@ Notes:
 
 - To close UI without URL restoration (advanced), pass `{restoreUrl:false}`.
 
-### Async consistency (v1.x)
+### Async consistency
 
 Layerge v1.x is designed around a simple rule:
 
@@ -590,7 +615,7 @@ router.modal.push('/page-b');
 
 If you need `A → B → C` to reliably build a stack, see the sequential pattern below.
 
-## Best Practices (v1.x)
+## Best Practices
 
 - Prefer `() => import('...')` loader for heavy overlays.
 - If you want browser back/forward to close overlays, use `push/replace(..., {url})`.
@@ -771,13 +796,42 @@ install system dependencies first:
 sudo pnpm exec playwright install-deps chromium
 ```
 
-## Debug log
+## Debugging
 
-Enable `debug:true` to see afterEach logs:
+### `debug: true`
+
+Enable `debug: true` on `createLayergeRouter` to see afterEach logs:
 
 ```text
 [Layerge][afterEach] { to:"/page-a", mode:"presenter", depth:1 }
 ```
+
+### Decision traces (development only)
+
+When an operation appears to do nothing, Layerge can explain why. It records a structured trace of the decisions that led to the outcome — **not** an exception stack.
+
+Traces are **off by default** and are never emitted in production builds. Opt in through any of these:
+
+```js
+globalThis.__LAYERGE_DECISION_TRACE_LEVEL = 'on-unexpected';
+// or process.env.LAYERGE_DECISION_TRACE_LEVEL
+// or import.meta.env.VITE_LAYERGE_DECISION_TRACE_LEVEL
+```
+
+| Level | Emits |
+|---|---|
+| `off` | Nothing. The default. |
+| `on-failure` | Only `failed` outcomes. |
+| `on-unexpected` | Anything that is not a plain success — aborted, superseded, failed. **A good default while developing.** |
+| `verbose` | Every event. Development only. |
+
+Every operation carries a `traceId`, so a one-line outcome log can be correlated with its trace. Dump the collected traces with:
+
+```js
+globalThis.__layergeDumpDecisionTraces({pretty: true});
+```
+
+Traces are bounded (a ring buffer) so a long session cannot grow without limit. URLs, queries and hashes are sanitized before being recorded.
 
 ## Demo
 

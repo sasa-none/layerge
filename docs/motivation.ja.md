@@ -142,4 +142,4 @@ Layerge を採用すべきでないケースも明記します。
 
 - [README](../README.md) — API リファレンスと使い方（英語）
 - [design_notes.md](./design_notes.md) — v1.x の設計判断
-- [roadmap.ja.md](./roadmap.ja.md) — 公開に向けた残課題
+- [roadmap.ja.md](./internal/roadmap.ja.md) — 公開に向けた残課題

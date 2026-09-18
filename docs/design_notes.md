@@ -10,6 +10,48 @@ This page captures the v1.x design decisions that are meant to stay stable.
 
 If you need "overlay routes" whose `useRoute()` reflects the overlay, use a separate router with `createMemoryHistory()`.
 
+## 1-b) Public entry state: what is deliberately absent
+
+The public entry state (`EntryContext`) is intentionally minimal:
+
+`entryId` / `phase` / `index` / `depth` / `isTop` — and nothing else.
+
+The following were considered and **excluded**:
+
+| Not provided | Why |
+|---|---|
+| `zIndex` | Derivable from `index` / `depth` / `isTop`. Providing it would imply Layerge owns stacking, which it does not. |
+| `mode` | Available from `useLayerge()`. Duplicating it in the entry context invites two sources of truth. |
+| `reason` | Encourages branching on internal causes that are not part of the contract. |
+| `stackVisible` | An internal rendering decision, not a property of an entry. |
+
+**The reason for excluding them is the same in every case: more state means more ways to be wrong.** Adding a field to the public entry state is a one-way door — see the guardrail in [motivation.ja.md](./motivation.ja.md).
+
+## 1-c) Rendering rule
+
+What gets rendered is the composition of two sets:
+
+```
+rendered = visible entries (stack) + entries currently leaving
+```
+
+- With `display: 'top'`, "visible" means the top entry only.
+- With `display: 'stack+cache'`, "visible" means every entry in the stack.
+- **Leaving entries are always rendered, in every mode, for as long as they exist.**
+
+That last rule is what makes leave animations possible at all. If leaving entries were dropped from the render set as soon as close was requested, there would be no element left to animate. Z-order and CSS remain the presenter's responsibility.
+
+## 1-d) Transition hook composition
+
+`<LayergeTransition>` merges its internal notifications with the user's hooks. The order is fixed:
+
+| Event | Order |
+|---|---|
+| `after-enter` | internal notification → user hook |
+| `after-leave` | user hook → internal notification |
+
+**The internal notification runs even if the user's hook throws.** Without that guarantee, one exception in a user hook would leave an overlay stuck open forever — the failure mode this component exists to prevent.
+
 ## 2) Display states
 
 Layerge behavior is intentionally explainable as **three states**:

@@ -12,7 +12,7 @@ AI エージェント（Claude Code / Cline / その他）がこのリポジト�
 - なぜ存在するのか: [docs/motivation.ja.md](./docs/motivation.ja.md) — **作業前に必ず読むこと**
 - 設計判断: [docs/design_notes.md](./docs/design_notes.md)
 - 公開 API と使い方: [README.md](./README.md)（英語・利用者向け）
-- 残課題: [docs/roadmap.ja.md](./docs/roadmap.ja.md)
+- 残課題: [docs/internal/roadmap.ja.md](./docs/internal/roadmap.ja.md)
 
 ---
 

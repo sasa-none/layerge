@@ -91,6 +91,62 @@
 
 ---
 
+## 7-b. TypeScript の書き方（2026-09-18 追加）
+
+TypeScript への全面移行にあたり実際に踏んだ問題から、守るべき規則を定めます。
+
+### 7-b-1. `any` は使わないこと
+
+`@typescript-eslint/no-explicit-any` は **error** です。**ルールを全体で弱めないでください。**
+
+やむを得ず必要な場合は、**理由コメント付きの個別抑止**で対応します。
+
+```ts
+// 外部ライブラリの型が実態と合わないため、この 1 箇所のみ許容する
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const raw = external as any;
+```
+
+> 現在、実装にも公開型にも `any` は **1 件もありません**（抑止コメントもゼロ）。この状態を維持してください。
+> 抑止コメントが増えてきた場合、それ自体が「型付けが破綻している」という信号です。
+
+### 7-b-2. 型注釈は「入力側」に置くこと
+
+型変換を伴う API（`reactive()` など）では、**注釈を入力側に置き、出力に `as` を使います。**逆にしてはいけません。
+
+```ts
+// ✅ 正しい: 過不足と型の誤りは initial の時点で検査される
+const initial: LayergeStore = { /* ... */ };
+return reactive(initial) as LayergeStore;
+
+// ❌ 誤り: 入力が無検査になり、フィールドを書き間違えても通る
+return reactive({ /* ... */ }) as LayergeStore;
+```
+
+`reactive()` の戻り値型 `UnwrapNestedRefs<T>` は vue-router の型を深く展開するため、素直に書くと型エラーになります。
+**`as` で無効化してよいのはこの型変換だけで、実体の検査ではありません。**
+
+### 7-b-3. `as unknown as` は使わないこと
+
+二重キャストは型システムを完全に迂回します。**これが必要になった時点で、型か実装のどちらかが誤っています。**
+本プロジェクトでは実際に、`as unknown as` で覆い隠されていた箇所が公開 API の欠陥（`settled` が不正値を返す）でした。
+
+### 7-b-4. `.vue` の props は runtime 宣言を保つこと
+
+`defineProps<T>()` の型ベース宣言に移すと、**ランタイムの props 宣言が変わります**（`required` が失われ、`type` が狭まる）。
+`defineProps({...})` の形を保ち、`PropType<T>` で型を与えてください。
+
+```ts
+const props = defineProps({
+    presenter: {type: String as PropType<string>, required: true},
+    component: {type: [Object, Function] as PropType<Component>, required: false}
+});
+```
+
+> **この種の変化は型検査では検出できません。**`.vue` を触ったら `dist` の出力を確認してください。
+
+---
+
 ## 8. 命名規則
 - 変数・関数は lowerCamelCase  
 - クラス名は BEM 準拠  

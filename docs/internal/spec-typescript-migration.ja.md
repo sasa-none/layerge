@@ -374,7 +374,7 @@ r.notDefined.push('/a');   // エラーになること
 
 ### 5-2. JSDoc 規約の再定義は移行完了後に行う
 
-[docs/guidelines/jsdoc.ja.md](./guidelines/jsdoc.ja.md) の「2-3 型宣言時のルール」は、その大半が TypeScript の型注釈に置き換わります。
+[docs/guidelines/jsdoc.ja.md](../guidelines/jsdoc.ja.md) の「2-3 型宣言時のルール」は、その大半が TypeScript の型注釈に置き換わります。
 
 ただし規約の再定義は**移行の途中では行いません。**移行中に規約が動くと、どちらに従うべきかが不明になるためです。移行完了後、残すべき部分（日本語コメント、1 行目の形式、if/else と三項演算子のコメント、アノテーションコメント）に絞って書き直します。
 
@@ -643,6 +643,6 @@ TypeScript 化後、これらを公開型からどう隠すか（`@internal` + `
 ## 関連ドキュメント
 
 - [roadmap.ja.md](./roadmap.ja.md) — 公開に向けた残課題の全体像
-- [motivation.ja.md](./motivation.ja.md) — 設計思想と非目標（移行中も遵守すること）
-- [guidelines/jsdoc.ja.md](./guidelines/jsdoc.ja.md) — 現行の JSDoc 規約（移行完了まで有効）
-- [../AGENTS.md](../AGENTS.md) — AI エージェント向けの作業指示
+- [motivation.ja.md](../motivation.ja.md) — 設計思想と非目標（移行中も遵守すること）
+- [guidelines/jsdoc.ja.md](../guidelines/jsdoc.ja.md) — 現行の JSDoc 規約（移行完了まで有効）
+- [../AGENTS.md](../../AGENTS.md) — AI エージェント向けの作業指示

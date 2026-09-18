@@ -151,7 +151,7 @@ README の Public API セクションを実装基準で全面改訂しました�
 補足事項:
 
 - `Ref` 型が未 import だったため、`vue` からの型 import に追加されています
-- 新しい `interface` / `type` は公開していません（[AGENTS.md](../AGENTS.md) の「公開 API を増やさない」に従い、インライン型のまま）
+- 新しい `interface` / `type` は公開していません（[AGENTS.md](../../AGENTS.md) の「公開 API を増やさない」に従い、インライン型のまま）
 - `usePresenterLeaveGuard.js` は `__layergeRunPresenterLeaveGuard` 等の内部関数も export していますが、`index.js` が名前指定の re-export（`export *` ではない）のため公開面には漏れていません
 - **`tsc` による型検査は未実施です。**TypeScript が未導入であり、導入すると `package.json` と lockfile が変わるため A-5 の範囲外と判断されました。B-1 で型定義がビルド生成に一本化されれば、この宣言も自動検証の対象になります
 
@@ -243,7 +243,7 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 #### ドキュメント側の追従（Cowork 対応済み）
 
-`prettier/prettier` を error に引き上げたことで、[コーディング規約](./guidelines/coding.ja.md) の記述と実態に矛盾が生じたため訂正しました。
+`prettier/prettier` を error に引き上げたことで、[コーディング規約](../guidelines/coding.ja.md) の記述と実態に矛盾が生じたため訂正しました。
 
 | 項目 | 旧記述 | 訂正後 |
 |---|---|---|
@@ -277,7 +277,7 @@ README の Public API セクションを実装基準で全面改訂しました�
 
 **本項目の起票時、本書は「`console.log` は 1 箇所もありません。したがって `allow` 指定での指摘は 0 件」と記載していましたが、これは誤りでした。**
 
-実際には [demo/src/navLog.js:75](../demo/src/navLog.js) に 1 件存在しました。デモのナビゲーション結果を出力する意図的なものです。実装側で、理由コメント付きの `eslint-disable-next-line` により抑止されています（`allow` に `log` を足すとルールの意味が失われるため、この対応が正しい判断です）。
+実際には [demo/src/navLog.js:75](../../demo/src/navLog.js) に 1 件存在しました。デモのナビゲーション結果を出力する意図的なものです。実装側で、理由コメント付きの `eslint-disable-next-line` により抑止されています（`allow` に `log` を足すとルールの意味が失われるため、この対応が正しい判断です）。
 
 **誤った原因:** 使用実態を調べる際、検索範囲を `layerge/` に限定したまま、結論を「lint 対象全体」について書いてしまいました。**A-9 で lint の検査範囲に `demo/src` が加わった直後であり、確認範囲もそれに合わせて広げるべきでした。**
 
@@ -329,7 +329,7 @@ if (result.status === 'failed') {   // ← 永遠に false になる
 }
 ```
 
-公開ステータスを 4 値に固定するという契約（[motivation.ja.md](./motivation.ja.md) の原則 3、および `PresenterAsyncResult` の型宣言）に違反しています。
+公開ステータスを 4 値に固定するという契約（[motivation.ja.md](../motivation.ja.md) の原則 3、および `PresenterAsyncResult` の型宣言）に違反しています。
 
 #### なぜテストをすり抜けたのか（重要）
 
@@ -537,7 +537,7 @@ CI はジョブごとに新しいランナーで動くため、TIME_WAIT の蓄�
 
 ## 優先度 B — 公開直後に着手すべきもの
 
-### B-1. TypeScript への全面移行 🔴 **公開前必須へ変更**
+### B-1. TypeScript への全面移行 ✅ 完了（2026-09-18）
 
 **仕様書を作成済みです: [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md)**
 
@@ -570,7 +570,10 @@ CI はジョブごとに新しいランナーで動くため、TIME_WAIT の蓄�
 | 段階 6 `.vue` | ✅ 完了（`c06635a`。3 ファイル。props は `PropType` 形式で runtime 宣言を保持） |
 | A-12 / A-13 | ✅ 完了（`b35b069` / `258742e`） |
 | 段階 7 型定義の生成へ切替 | ✅ 完了（`79375a3`。**台帳全項目が決着し、契約変更ゼロ。**6-4 も決定・適用済み） |
-| **段階 8 仕上げ** | **次。**`allowJs` を外す / JSDoc 規約の再定義（**Cowork 担当**）/ README 更新 |
+| 段階 8 仕上げ | ✅ 完了（`9bfc57c`。`allowJs` 除去・README 更新・`strict` 引き上げ） |
+| JSDoc / コーディング規約の再定義 | ✅ 完了（Cowork 担当分） |
+
+**B-1 TypeScript 全面移行は全 8 段階が完了しました。**
 
 > **`layerge/` 配下に残る `.js` は `index.js` のみです。**
 > 各段階の完了条件は `pnpm typecheck` / `pnpm lint:check` / `pnpm test` / E2E の 4 つです（仕様書 第 4 章）。
@@ -650,6 +653,36 @@ B-4 のコミット時、E2E が 1 度赤になり、その結果を待たずに
 
 ---
 
+### B-8. `strictNullChecks` が false のまま 🟡
+
+段階 8 で `strict` を 1 フラグずつ引き上げた結果、**8 フラグ中 6 つが true** になりました。
+
+| 状態 | フラグ |
+|---|---|
+| **true** | `noImplicitAny` / `noImplicitThis` / `strictBindCallApply` / `strictFunctionTypes` / `useUnknownInCatchVariables` / `alwaysStrict` |
+| **false** | `strictNullChecks` / `strictPropertyInitialization`（前者に依存するため単独では有効化不可） |
+
+`strictNullChecks` を有効化すると 28 件のエラーが出ます。**うち 13 件は vue-router の型モデル差**が根です。
+
+```
+Type 'RouteRecordNameGeneric | null' is not assignable to type 'RouteRecordNameGeneric'.
+```
+
+`router.resolve()` が返す `RouteLocationResolved` は `name` が `null` を取り得ますが、公開型が使う `RouteLocationNormalizedLoaded` は取りません。
+
+解消には次のいずれかが必要です。
+
+1. **公開型 `PresenterEntry.route` を変更する** → 契約変更にあたる
+2. **13 箇所をキャストする** → 型モデルの差を隠すことになる
+
+残る 15 件は通常の null 処理で対処可能ですが、**フラグは all-or-nothing** のため、13 件を片付けない限り有効化できません。
+
+**公開型を変える判断を含むため、移行の仕上げの範囲を超えると判断して見送られました。**受け入れ条件 9 に従い、理由は [spec-typescript-migration.ja.md](./spec-typescript-migration.ja.md) の 6-1 に記録済みです。
+
+**公開の可否には影響しません。**着手する場合は、選択肢 1 を採るなら次のメジャー／マイナーバージョンで、選択肢 2 を採るならキャストの理由を各所にコメントで残してください。
+
+---
+
 ### B-6. consumer lockfile の扱い 🟢
 
 consumer の lockfile は tarball の integrity を含むため、ソースが変わるたびに古くなります（B-2 で `--no-frozen-lockfile` を使う理由）。git 管理から外す選択肢もありますが、その場合 `vue` / `vue-router` / `vite` の固定が失われます。**現状維持で実害はありません。**判断が必要になったときのための記録です。
@@ -658,7 +691,87 @@ consumer の lockfile は tarball の integrity を含むため、ソースが�
 
 ## 優先度 C — 継続的に整えるもの
 
-### C-1. バージョン表記の混在を解消する 🟡
+### C-4. 公開前のリポジトリ整理 ✅ Cowork 分は実施済み（2026-09-18）／**Code へ確認依頼 1 件**
+
+2026-09-18 に棚卸しを実施しました。**未追跡かつ未無視のファイルはゼロ**で、`dist/` / `layerge.tgz` / `test-results/` はすべて `.gitignore` 済みです。以下は追跡されているファイルに関する指摘です。
+
+#### 削除を推奨するもの
+
+| 対象 | 理由 |
+|---|---|
+| **`MIGRATION_v1x.md`** | 「v1.1.0 から新しい v1.x への移行ガイド」ですが、**このパッケージは一度も公開されていません。**世に存在しないバージョン間の移行を説明しており、利用者を確実に混乱させます。内容は `CHANGELOG.md` と README でカバー済みです |
+| **`V1X_NOTES.md`** | 冒頭で自ら "(internal)" と名乗っています。内容は `docs/design_notes.md` と `CHANGELOG.md` に重複しており、**リポジトリ直下という最も目立つ場所**にあります |
+| **`.browserslistrc`** | **参照している設定も、利用する依存も存在しません**（`autoprefixer` / `postcss-preset-env` / `@babel/preset-env` いずれも未インストール、postcss 設定ファイルも無し）。ビルドターゲットは `tsconfig.json` の `target: ES2022` が決めています |
+
+> ### ⚠️ Code への確認依頼: `.browserslistrc` のビルド影響
+>
+> **「削除前後で `pnpm build` の出力を比較すること」と自分で書いておきながら、比較せずに削除しました。**Cowork の環境では vite を実行できないためです。
+>
+> `autoprefixer` / `postcss-preset-env` / `@babel/preset-env` はいずれも未インストールで postcss 設定も無いため影響は無いと判断していますが、**未検証です。**
+> `pnpm build` を実行し、`dist/index.mjs` と `dist/index.cjs` が削除前と同一であることを確認してください。差分が出たら `.browserslistrc` を git 履歴から復元し、報告してください。
+
+#### 内容を精査したうえでの処置
+
+当初は「`internal/` へ移動」としていましたが、**中身を読んだ結果、統合・削除に方針を変えました。**6 件のうち利用者向けの有用な情報が埋もれていたためです。
+
+| 旧ファイル | 処置 | 理由 |
+|---|---|---|
+| `v4.0-spec.md` | → **`internal/outcome-and-tracing.md`** へ改名・移動 | 内部 Outcome モデル・DecisionTrace・環境サポート契約・リーク不変条件は**他に無い保守者向け知識**。版番号を外し、本文中の `v4.0` / `v3.x` という版フェーズ呼称も除去 |
+| `v3.0.md` | **削除** | 内容は README の Public API に統合済み。**離脱ガードの記述は削除済みコード（A-6）を説明しており誤りを含んでいました** |
+| `v2/usage.md` | **削除**（README へ統合） | Forward 復元が push 限定、`opened` と `entered` の違い、`provide` 不要の 3 点が **README に欠けていました**。追記済み |
+| `v2/plan.md` | **削除** | 完了済みの PR 計画 |
+| `migration_v2_to_v3.md` | **削除** | 未公開バージョン間の移行ガイド |
+| `v1x-headless-and-transition.md` | **削除**（design_notes へ統合） | 公開エントリ状態から `zIndex` / `mode` / `reason` / `stackVisible` を外した理由、描画対象ルール、hook 合成の例外安全性を追記 |
+
+#### README の是正（統合作業中に発見）
+
+| 是正 | 内容 |
+|---|---|
+| **「v2 (out of scope)」節が事実と異なっていた** | 「Invoker / trigger model」「Link extensions」を**未実装**と書いていましたが、`<LayergeLink>` / `useLayergeLink` は公開済み、invoker も実装済みです。**公開直前のパッケージが、出荷している機能を「無い」と説明していました。**「Not provided」節へ置き換え |
+| 環境サポート表を追加 | SSR は対象外、マルチタブは未定義、という**契約**が README のどこにもありませんでした |
+| Debugging 節を拡充 | DecisionTrace の有効化方法と出力レベル。利用者が使える機能なのに内部資料にしか記載がありませんでした |
+| 見出しの版接尾辞を除去 | `(v1.x)` / `(v1)` は設計フェーズの呼称で、公開バージョン `1.0.0` と紛らわしいため |
+
+#### 移動したもの
+
+**`docs/internal/` を新設し、現役でない資料をそこへ集約してください。**`git mv` で履歴を保ってください。
+
+| 移動元 | 種別 |
+|---|---|
+| `docs/v2/plan.md` / `docs/v2/usage.md` | 設計フェーズ資料 |
+| `docs/v3.0.md` / `docs/v4.0-spec.md` | 同上 |
+| `docs/migration_v2_to_v3.md` | 同上 |
+| `docs/v1x-headless-and-transition.md` | 同上 |
+| `docs/spec-typescript-migration.ja.md` | **移行完了により履歴資料へ** |
+| `docs/roadmap.ja.md` | 内部の課題管理。公開物ではありません |
+
+整理後の `docs/` は **13 ファイル → 8 ファイル**になりました。相対リンク 58 本がすべて解決することを確認済みです。
+
+```
+docs/
+  README.md          索引
+  motivation.ja.md   目的と解決したい課題
+  design_notes.md    設計判断
+  guidelines/        コーディング規約・JSDoc 規約
+  internal/          設計フェーズ資料・移行仕様書・課題管理
+```
+
+参照の更新も実施済みです（`docs/README.md` は索引として全面改稿、`AGENTS.md` と `motivation.ja.md` の参照先を補正、移動したファイル内部の相対深さも補正）。
+
+> **これで C-1（バージョン表記の混在）も解消します。**`v2` / `v3` / `v4` の命名が `internal/` の下に入り、「これらは npm のバージョンではない」という警告の説得力が増します。
+
+#### 任意（判断はお任せします）
+
+`consumer-vue-router-4` / `consumer-vue-router-5` をリポジトリ直下から `consumers/vue-router-4` / `consumers/vue-router-5` へ移すと、ルートが片付きます。ただし **CI のジョブ定義（matrix のパス）と、`package.json` の `file:../layerge.tgz` を `file:../../layerge.tgz` に直す**必要があります。効果は見た目の整理に留まるため、**優先度は低い**です。
+
+#### 変更しないほうがよいもの
+
+- **設定ファイルが `.js` のままであること。**ソースは TypeScript になりましたが、`vite.config.js` や `eslint.config.js` を `.ts` 化する利点はなく、ツールによっては扱いが不安定です。**一貫性のために直す必要はありません**
+- `dist/` / `layerge.tgz` / `test-results/` が物理的に存在すること。すべて `.gitignore` 済みで、公開物には影響しません
+
+---
+
+### C-1. バージョン表記の混在 ✅ C-4 により解消（2026-09-18）
 
 `docs/` 配下には `v2/`、`v3.0.md`、`v4.0-spec.md`、`migration_v2_to_v3.md` があり、README 本文にも `v1.x` / `v2` / `v3.2` の表記が混在しています。
 
@@ -666,7 +779,7 @@ consumer の lockfile は tarball の integrity を含むため、ソースが�
 
 外部の読者は `v4.0-spec.md` を「将来のバージョン 4.0 の仕様」と解釈しますが、実際には過去の設計フェーズの呼称です。公開リポジトリでは確実に誤解を招きます。
 
-**対応方針:** [docs/README.md](./README.md) に位置づけの説明を置く（実施済み）。そのうえで、資料の改名または `docs/internal/` への集約を検討する。今後の新規ドキュメントでこの命名を踏襲しないこと。
+**対応方針:** [docs/README.md](../../README.md) に位置づけの説明を置く（実施済み）。そのうえで、資料の改名または `docs/internal/` への集約を検討する。今後の新規ドキュメントでこの命名を踏襲しないこと。
 
 ### C-2. ドキュメントサイトの検討 🟢
 
@@ -682,10 +795,10 @@ README には `vue@3` / `vue-router@4` / `vue-router@5` で検証済みと記載
 
 ## 完了済み
 
-- [x] プロジェクトの目的・解決したい課題の明文化 → [docs/motivation.ja.md](./motivation.ja.md)
-- [x] コーディング規約・JSDoc 規約のツール非依存化 → [docs/guidelines/](./guidelines/)
-- [x] AI エージェント向けエントリポイントの整備 → [AGENTS.md](../AGENTS.md)
-- [x] ドキュメント索引の整備 → [docs/README.md](./README.md)
+- [x] プロジェクトの目的・解決したい課題の明文化 → [docs/motivation.ja.md](../motivation.ja.md)
+- [x] コーディング規約・JSDoc 規約のツール非依存化 → [docs/guidelines/](../guidelines/)
+- [x] AI エージェント向けエントリポイントの整備 → [AGENTS.md](../../AGENTS.md)
+- [x] ドキュメント索引の整備 → [docs/README.md](../../README.md)
 - [x] npm 上での名前の空き確認（`layerge` は未使用）
 - [x] README の Public API セクションを実装基準で全面改訂（A-1）
 - [x] `docs/v3.0.md` の誤記に警告注記を追加（A-6 の暫定対応）
