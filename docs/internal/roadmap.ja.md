@@ -535,6 +535,146 @@ CI はジョブごとに新しいランナーで動くため、TIME_WAIT の蓄�
 
 ---
 
+### A-15. `settled` の解決タイミングが名前・ドキュメントと一致していません 🔴
+
+**2026-09-18 に、起動中のデモをブラウザから実測して発見しました。** 公開 API の意味論に関する論点なので、実装前に方針の決定が必要です。
+
+#### 実測結果
+
+デモ（`localhost:8080`）のルーターインスタンスに直接アクセスし、`handle.settled` と `handle.closed` の解決時刻を計測しました。
+
+| 呼び出し | `settled` 解決 | 値 | 解決時の `depth` / `mode` | `closed` 解決 |
+|---|---|---|---|---|
+| `modal.open(Component)` | **2ms** | `{"status":"completed"}` | `1` / `presenter` | 700ms |
+| `modal.push(Component, {url})` | **3ms** | `{"status":"completed"}` | `1` / `presenter` | （未計測） |
+| `modal.push('/page-a')` | **4ms** | `{"status":"completed"}` | `1` / `presenter` | （未計測） |
+
+計測は 3 通りとも、直前に `closeAll` で `depth=0` に戻し、`settled` が未解決であることを確認してから実施しています。解決後 1.2 秒間、presenter は開いたままでした。
+
+`closed` は 700ms（実際に閉じた時点）で正しく解決しています。**`settled` だけが約 698ms 早く、開いた瞬間に解決しています。**
+
+#### 実装は意図的です
+
+`layerge/router/createLayergeRouter.ts:1773` にコメント付きで書かれています。
+
+```ts
+// v3.2: opt-in async の settled 対象は「確定（settled）」のみ
+// - open/push/replace が commit された時点で completed とみなす
+handle._resolveSettled({status: 'completed'});
+```
+
+失敗系は `cancelHandle`（同 2085 行）で `aborted` / `failed` / `superseded` を解決します。つまり `settled` の実際の意味は **「open/push/replace という操作そのものの結果」** であり、設計としては一貫しています。4 つのステータスもこの読み方で過不足なく説明できます。
+
+#### では何が問題か
+
+**名前とドキュメントが、この意味を伝えていません。** README の記述は次のとおりです。
+
+```
+| `closed`  | `Promise<void>`                  | Resolves when the entry has closed. |
+| `settled` | `Promise<PresenterAsyncResult>`  | Resolves with the settled outcome only. |
+```
+
+`closed` の行が「閉じたときに解決する」と明示している直後に、`settled` が「settled outcome で解決する」とだけ書かれています。これは同語反復で情報がありません。この 2 行を並べて読んだ利用者は、`settled` を **`closed` の戻り値付き版**（閉じたときに、どう閉じたかを添えて解決する）だと理解します。`settled`（確定した・決着した）という語自体もその読みを強く後押しします。
+
+この誤解は次のようなコードを生みます。
+
+```js
+const handle = router.modal.push(Editor, {url: '/edit'});
+const result = await handle.settled;
+
+if (result.status === 'completed') {
+    refreshList();  // ユーザーが何もしていないのに、開いた直後に走ります
+}
+```
+
+これは静かに壊れます。例外も警告も出ず、`completed` という「成功したように見える値」が返るためです。
+
+#### 決めていただきたいこと
+
+1.0.0 は未公開なので、**いま決めれば破壊的変更になりません。** 公開後は名前も意味も凍結されます。
+
+- **案 1: 名前を変える。** 意味論は現状のまま、`settled` を操作結果だと分かる名前（`opened` / `result` / `committed` など）に改名する。実装変更は最小。
+- **案 2: ドキュメントだけ直す。** 名前は据え置き、README に「open/push/replace の操作結果であり、presenter が閉じた時点ではない」と明記し、`closed` との違いを例示する。
+- **案 3: 意味論を変える。** `settled` を閉じた時点の結果に変更する。設計・テスト・E2E への影響が最も大きい。
+
+いずれの案でも、**「presenter が閉じたときに、どう閉じたかを知る」公開 API が現在は存在しません**（`closed` は `Promise<void>` で値を返しません）。案 3 を採らない場合、この用途をどう満たすかを併せて決める必要があります。
+
+#### A-11 との関係
+
+A-11 は `settled` が失敗系で**不正な形**で解決する不具合でした。本項は成功系が**不正なタイミング**で解決する（ように読める）問題です。同じ API の別の側面であり、A-11 の修正は本項に影響しません。
+
+---
+
+### A-16. vue-router の非推奨 API `next()` を使用しています 🔴
+
+デモをブラウザで開いた時点で、コンソールに次の警告が出ます。
+
+```
+[Vue Router warn]: The `next()` callback in navigation guards is deprecated.
+Return the value instead of calling `next(value)`.
+```
+
+発生源はデモではなく **ライブラリ本体** です。`layerge/router/createLayergeRouter.ts:2774` の `router.beforeEach((to, from, next) => {...})` で、`next()` を 6 箇所で呼んでいます（2783 / 2791 / 2797 / 2804 / 2820 / 2827 行）。
+
+#### なぜ公開前に直すべきか
+
+`package.json` は `vue-router: ^4.2.0 || ^5.0.0` を宣言しています。vue-router 5 の利用者は、**Layerge を入れた瞬間から、ナビゲーションのたびにこの警告を見ることになります。** しかも警告文に出るのは `[Vue Router warn]` であって Layerge の名前ではないため、利用者は自分のコードを疑って時間を溶かします。
+
+さらに、非推奨は将来の削除を意味します。vue-router 6 で `next()` が外れた時点で Layerge は動かなくなります。
+
+#### 修正は機械的です
+
+当該ガードは**完全に同期**で、`next()` の呼び出しはすべて直後に `return` が続くか、関数の末尾です。したがって次の置換で等価になります。
+
+```
+next(false); return;  ->  return false;
+next(); return;       ->  return;
+next();  （末尾）      ->  （削除、または return;）
+```
+
+あわせて引数から `next` を落とし、`router.beforeEach((to, from) => {...})` にします。
+
+vue-router 4 は 4.0 から値の return に対応しているため、宣言している peer 範囲の両方で動作します。
+
+#### 受け入れ条件
+
+- デモをブラウザで開き、コンソールに `next()` の非推奨警告が出ないこと
+- unit / E2E がすべて緑であること（ガードの分岐は 6 経路あります。`next(false)` による**中断**が維持されているかを特に確認してください）
+- `dist` を修正前後で比較し、差分が `next` の除去に対応するものだけであること
+
+---
+
+### A-17. 公開ハンドルに内部メンバーが実行時に露出しています 🟡
+
+デモ上で `modal.open()` の戻り値を `Object.keys()` で列挙した結果です。
+
+```
+["_id", "_resolveSettled", "_resolveClosed", "_setActive", "close", "closed", "settled", "isActive"]
+```
+
+`_resolveSettled` / `_resolveClosed` / `_setActive` は、Layerge の内部状態を書き換えるための関数です。利用者が
+
+```js
+handle._resolveSettled({status: 'completed'});
+```
+
+を呼べば、実際には確定していない結果で `settled` を解決できます。`_setActive(true)` で閉じたハンドルを生き返らせることもできます。
+
+#### 移行仕様 §6-4 の決定では塞がりません
+
+§6-4 で `stripInternal` を適用する決定をしました。これにより `.d.ts` からは消えます。しかし `stripInternal` は**型定義からの除去であって、実行時の除去ではありません**。結果として、
+
+- 型の上では「存在しない」
+- 実行時には「存在し、呼べる」
+
+という食い違いが生じています。TypeScript 利用者は `handle._resolveSettled` を書けませんが、JavaScript 利用者は書けますし、`as any` を通せば誰でも書けます。
+
+#### 検討していただきたい対応
+
+公開ハンドルと内部ハンドルを分離し、`modal.open` / `push` / `replace` が返すオブジェクトには `close` / `closed` / `settled` / `isActive` のみを持たせる方法があります。内部ハンドルは `$layerge.stack` のエントリ側だけが保持します。
+
+優先度を A の中では 🟡 としたのは、これが**誤用したときだけ壊れる**問題であり、A-15 / A-16 のように**正しく使っていても影響を受ける**問題ではないためです。ただし 1.0.0 で公開すると、ハンドルの形は以後の互換性の対象になります。
+
 ## 優先度 B — 公開直後に着手すべきもの
 
 ### B-1. TypeScript への全面移行 ✅ 完了（2026-09-18）
@@ -691,7 +831,7 @@ consumer の lockfile は tarball の integrity を含むため、ソースが�
 
 ## 優先度 C — 継続的に整えるもの
 
-### C-4. 公開前のリポジトリ整理 ✅ Cowork 分は実施済み（2026-09-18）／**Code へ確認依頼 1 件**
+### C-4. 公開前のリポジトリ整理 ✅ 完了（2026-09-18 / `455e1fd`）
 
 2026-09-18 に棚卸しを実施しました。**未追跡かつ未無視のファイルはゼロ**で、`dist/` / `layerge.tgz` / `test-results/` はすべて `.gitignore` 済みです。以下は追跡されているファイルに関する指摘です。
 
@@ -703,12 +843,25 @@ consumer の lockfile は tarball の integrity を含むため、ソースが�
 | **`V1X_NOTES.md`** | 冒頭で自ら "(internal)" と名乗っています。内容は `docs/design_notes.md` と `CHANGELOG.md` に重複しており、**リポジトリ直下という最も目立つ場所**にあります |
 | **`.browserslistrc`** | **参照している設定も、利用する依存も存在しません**（`autoprefixer` / `postcss-preset-env` / `@babel/preset-env` いずれも未インストール、postcss 設定ファイルも無し）。ビルドターゲットは `tsconfig.json` の `target: ES2022` が決めています |
 
-> ### ⚠️ Code への確認依頼: `.browserslistrc` のビルド影響
->
-> **「削除前後で `pnpm build` の出力を比較すること」と自分で書いておきながら、比較せずに削除しました。**Cowork の環境では vite を実行できないためです。
->
-> `autoprefixer` / `postcss-preset-env` / `@babel/preset-env` はいずれも未インストールで postcss 設定も無いため影響は無いと判断していますが、**未検証です。**
-> `pnpm build` を実行し、`dist/index.mjs` と `dist/index.cjs` が削除前と同一であることを確認してください。差分が出たら `.browserslistrc` を git 履歴から復元し、報告してください。
+#### `.browserslistrc` の削除は検証済みです
+
+Cowork が「比較してから消す」と書いておきながら未検証のまま削除したため、Code 側で検証を依頼しました。**結果は問題なし**です。
+
+| | `index.mjs` | `index.cjs` |
+|---|---|---|
+| `.browserslistrc` なし | 48,245 bytes | 36,800 bytes |
+| `.browserslistrc` あり（git 履歴から復元） | 48,245 bytes | 36,800 bytes |
+| 比較 | **バイト単位で同一** | **バイト単位で同一** |
+
+#### 移動は 3 件とも名前変更として追跡されています
+
+`outcome-and-tracing.md`（R083）/ `roadmap.ja.md`（R082）/ `spec-typescript-migration.ja.md`（R099）。履歴が保たれています。
+
+#### Cowork の検証ツールの盲点（記録）
+
+Code が `AGENTS.md:15` の不整合を発見しました。**リンクの href は新パスへ更新済みだったのに、表示テキストが旧パスのまま**でした。
+
+Cowork のリンク検証スクリプトは**リンク先が解決するかだけを見ており、表示テキストが実態と一致しているかを見ていません。**リンクとしては機能するため、検証は通ってしまいます。**今後パス変更を伴う整理を行う際は、表示テキストも突き合わせてください。**
 
 #### 内容を精査したうえでの処置
 
@@ -780,6 +933,115 @@ docs/
 外部の読者は `v4.0-spec.md` を「将来のバージョン 4.0 の仕様」と解釈しますが、実際には過去の設計フェーズの呼称です。公開リポジトリでは確実に誤解を招きます。
 
 **対応方針:** [docs/README.md](../../README.md) に位置づけの説明を置く（実施済み）。そのうえで、資料の改名または `docs/internal/` への集約を検討する。今後の新規ドキュメントでこの命名を踏襲しないこと。
+
+### C-5. デモの命名と導線を整える 🟡
+
+他の開発者がデモを開いたときに迷わないようにします。2026-09-18 の調査結果です。
+
+#### 問題 1: 版フェーズ名がデモの表層に出ています
+
+| 現状 | 利用者が受ける印象 |
+|---|---|
+| ルート `/v2-link`、見出し **「v2 Link Demo」** | 「v2 と v3、いま自分はどちらを使っている？」 |
+| ルート `/v3-advanced`、見出し **「v3 advanced demo」** | 「v3 のほうが新しい？」 |
+
+**実際には両方とも `1.0.0` に入っています。**C-1（バージョン表記の混在）がドキュメントでは解消しましたが、**デモには残っていました。**デモは他の開発者が最初に触る場所であり、最も誤解を生みやすい位置です。
+
+あわせて `/modal/fake-help` と `BridgeModalFakeHelpPage.vue` は **`fakePath` の遺物**です。オプションは `url` になったのに「fake」だけが残っています。
+
+#### 改名の範囲（実測）
+
+| 対象 | 箇所 |
+|---|---|
+| ルート `/v2-link` | demo 3 ファイル / e2e 1 本 |
+| ルート `/v3-advanced` | demo 3 ファイル / **e2e 9 本** |
+| `/modal/fake-help` 系 | demo 3 ファイル / e2e 1 本 |
+| テスト ID `v2-*` | **18 個** |
+| テスト ID `v3-*` | **22 個** |
+
+**A-8（`fakepath` 命名の一掃）と同規模です。**A-8 で確立した手順（`git mv` で履歴を保つ、対応表による機械的置換、`dist` 比較で挙動不変を裏付ける）がそのまま使えます。
+
+#### 推奨する新しい名前
+
+| 現状 | 変更後 | 理由 |
+|---|---|---|
+| `/v2-link` | **`/links`** | 何のデモかが名前で分かる |
+| `/v3-advanced` | **`/advanced`** | 同上 |
+| `/modal/fake-help` | **`/modal/url-overlay`** | `url` オプションのデモであることを示す |
+| `V2LinkDemoPage.vue` | `LinksDemoPage.vue` | |
+| `V3AdvancedDemoPage.vue` | `AdvancedDemoPage.vue` | |
+| `V3LeaveGuardContent.vue` | `LeaveGuardContent.vue` | |
+| `BridgeModalFakeHelpPage.vue` | `BridgeUrlOverlayPage.vue` | |
+| テスト ID `v2-*` / `v3-*` | `links-*` / `advanced-*` | ページ名と揃える |
+
+> **ルート名だけ変えてテスト ID を `v2-*` のまま残さないでください。**ページ名と接頭辞がずれ、A-8 以前と同じ「名前が事実に反する」状態が別の形で生まれます。
+
+#### 問題 2: デモの全体像を示す導線がありません
+
+`HomePage` から `/v2-link` と `/v3-advanced` へのボタンはありますが、**何のデモなのかの説明がありません。**`/transition` と `/cache-state` に至っては、ページ下部の生のルート一覧に埋もれています。
+
+**対応方針:**
+
+1. **`demo/README.md` を新設**（Cowork 担当）— 起動方法と、各ページが何を示すのかの一覧。`demo/` を開いた人が最初に見る場所です
+2. **`HomePage` に「デモ一覧」セクションを追加**（Code 担当）— 各デモへのリンクに一行の説明を添える。現在の生ルート一覧は残してよいが、一覧とは分ける
+3. **各デモページの冒頭に「このページで何を確かめられるか」を 1 行**（Code 担当）— `TransitionDemoPage` と `CacheStatePage` には見出しすら無い箇所があります
+
+> **Cowork の `demo/README.md` は、改名の完了後に書きます。**先に書くと古い名前で書くことになります。
+
+---
+
+
+#### 追加項目（2026-09-18 / 起動中のデモを実測して追加）
+
+**7. デモ本体に残っているバージョン表記（実測で確定した全件）**
+
+| 箇所 | 内容 |
+|---|---|
+| `HomePage.vue:37` | `v2 link demo` |
+| `HomePage.vue:41` | `v3 advanced demo (controlledHooks / leaveGuard)` |
+| `HomePage.vue:143` | `Layerge v1.1 should keep the latest operation consistent.` |
+| `HomePage.vue:268` | `v1.1 の「最新が勝つ」仕様` |
+| `TransitionDemoPage.vue:5` | `This page focuses on v1.x changes:` |
+| `V2LinkDemoPage.vue:3` | `<h1>v2 Link Demo</h1>` |
+| `V2LinkDemoPage.vue:171,207` | コメント内の `(v3)` / `(v2 scope)` |
+| `V3AdvancedDemoPage.vue:3,8` | `v3 advanced demo` / `v3-only behaviors` |
+| `V3AdvancedDemoPage.vue:41,148` | url 文字列 `/modal/v3-guard` |
+| `router.js:44,45,149` | ルート定義とコメント |
+
+**8. 画面に出る日本語（4 行のみ）**
+
+user-facing は英語という決定に照らすと、デモの表示文字列は英語にすべきです。該当は次の 4 行だけで、範囲は限定的です。コメント・JSDoc の日本語は developer-facing なので**そのままで構いません**。
+
+- `HomePage.vue:268` `naive: 連続pushは v1.1 の「最新が勝つ」仕様により、最後の1回だけが確定します。`
+- `HomePage.vue:270` `sequential: 1回ずつ確定を待ってから次をpushするため、深さが増えていきます。`
+- `V2LinkDemoPage.vue:22` `RouterLink 互換の最小導線（push/replace/open）`
+- `V2LinkDemoPage.vue:121` `カスタム導線の正解ルート（bindings/handlers + hooks）`
+
+**9. bridge route を直接開いて閉じると、足場のページに取り残されます**
+
+実測した挙動です。
+
+1. `/modal/fake-help` をフルリロードで開く → `mode: presenter` / `depth: 1` / URL は `/fake/help` に書き換わる（**ここまでは正常**）
+2. オーバーレイの Close を押す → `depth: 0` / URL は `/modal/fake-help` に戻る
+3. 画面に残るのは `Bridge route: /modal/fake-help — This page is an entry point for deep links.` という**足場そのもの**
+
+deep link を共有された人がモーダルを閉じると、アプリの実画面ではなく開発用の説明ページに着地します。これは deep link を実装する利用者が最初に踏む落とし穴なので、デモが正しい形を示すべきです。bridge route 側で背景に実ページを置くか、閉じた後に `/` へ `replace` する導線を入れてください。あわせて README の deep link 節に、**bridge route は「閉じた後にどこへ着地するか」を決める責任を持つ**ことを明記します（Cowork が対応します）。
+
+**10. `push+url` の直後は `lastEntryId` が取れません（デモ側の不具合）**
+
+`V3AdvancedDemoPage.vue` の `pushWithUrl` は `nextTick` でスタック最上位の id を読みますが、`push+url` は非同期ナビゲーションを伴うため `nextTick` の時点ではまだ確定しておらず、`lastEntryId` が空のままになります（実測: `lastEntryId=-`）。`openComponent` は同期なので取得できます。
+
+結果として、`push+url` の後に `closeAsync(lastEntryId)` ボタンが機能しません。新しい開発者がこのページで最初に試す操作のひとつなので、直しておくべきです。
+
+**11. 確認済み: 中核の主張は実測で成立しています**
+
+以下は不具合ではなく、**正常に動作していることの記録**です。
+
+- `/` から `/modal/fake-help` を開く → `mode: presenter` / `depth: 1`、URL は `/fake/help`
+- ブラウザの戻る → `depth: 0` / `mode: page` / URL は `/`
+- このとき **`home mounts` は `1` のまま**（背景ページは再マウントされていない）、`window` に置いた番兵も生存（フルリロードが起きていない）
+
+「戻るでオーバーレイだけが閉じ、背景が保持される」という Layerge の中心的な主張は、実測で確認できました。
 
 ### C-2. ドキュメントサイトの検討 🟢
 
