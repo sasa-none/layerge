@@ -11,8 +11,7 @@ describe('v3.x async API (opt-in)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const resultPromise = wrapped.modal.pushAsync('/page-a', {url: '/modal/a'});
@@ -36,8 +35,7 @@ describe('v3.x async API (opt-in)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const a = wrapped.modal.pushAsync('/slow-a', {url: '/modal/slow-a'});
@@ -58,8 +56,7 @@ describe('v3.x async API (opt-in)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         wrapped.modal.push('/page-a');
@@ -80,8 +77,7 @@ describe('v3.x async API (opt-in)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const res = await wrapped.modal.closeAsync(/** @type {any} */ (''));

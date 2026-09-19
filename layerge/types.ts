@@ -189,11 +189,17 @@ export interface PendingPresenterNav {
 export interface PresenterDefinition {
     /** Presenter の枠コンポーネント */
     component: Component;
-    /** 表示モード（推奨）。指定した場合 stack/cache を上書きします。 */
+    /** 表示モード */
     display?: PresenterDisplay;
-    /** このPresenterをstack扱いにする（互換） */
+    /**
+     * display から導出した内部表現です（正規化後の presenters にのみ現れます）
+     * @internal
+     */
     stack?: boolean;
-    /** このPresenterをfreeze表示する（stack前提・互換） */
+    /**
+     * display から導出した内部表現です（正規化後の presenters にのみ現れます）
+     * @internal
+     */
     cache?: boolean;
 }
 
@@ -508,11 +514,7 @@ export interface CreateLayergeRouterOptions<P extends PresenterMap = PresenterMa
     debug?: boolean;
     /** 背景ルートの比較方法（既定: 'fullPath'） */
     backgroundCompare?: 'fullPath' | 'path';
-    /** @deprecated v1.x互換: display を優先して利用してください */
-    stack?: boolean;
-    /** @deprecated v1.x互換: display を優先して利用してください */
-    cache?: boolean;
-    /** デフォルト表示モード（推奨）。指定した場合 stack/cache を上書きします。 */
+    /** 既定の表示モード（presenter 側で display を指定しない場合に使います） */
     display?: PresenterDisplay;
     /** Presenter の mount 既定値（v3.0） */
     presenterDefaults?: {

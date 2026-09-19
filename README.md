@@ -3,7 +3,7 @@
 Layerge is a Vue Router extension that adds **presenter-style navigation** (overlay / stacked overlays) with a minimal API.
 
 - Written in **TypeScript**. Type declarations are generated from the source at build time, for both ESM and CJS consumers.
-- Presenter behavior is configured with a single `display` option (`stack`/`cache` remain for compatibility).
+- Presenter behavior is configured with a single `display` option.
 - URL integration uses `url`; `mountPreset` controls mounting; `controlledHooks` can cancel operations.
 - This README is the canonical guide. A VitePress docs site is planned later.
 
@@ -181,8 +181,6 @@ const router = createLayergeRouter({
 | `controlledHooks` | `LayergeControlledHooks` | — | Opt-in hooks that can cancel operations. See [controlledHooks](#controlledhooks). |
 | `backgroundCompare` | `'fullPath' \| 'path'` | `'fullPath'` | How the background route is compared. Use `'path'` to ignore query and hash. |
 | `debug` | `boolean` | `false` | Enables development logging. |
-| `stack` | `boolean` | `false` | **Deprecated.** Use `display`. |
-| `cache` | `boolean` | `false` | **Deprecated.** Use `display`. |
 
 It adds to the router:
 
@@ -209,11 +207,7 @@ presenters: {
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `component` | `Component` | *(required)* | The presenter component. Throws if missing. |
-| `display` | `'top' \| 'stack' \| 'stack+cache'` | inherits root `display` | Display mode. See [display / stack / cache](#display--stack--cache). |
-| `stack` | `boolean` | `false` | **Deprecated.** Use `display`. |
-| `cache` | `boolean` | `false` | **Deprecated.** Use `display`. Requires `stack: true`. |
-
-If both `display` and `stack`/`cache` are given, `display` wins and a development warning is emitted.
+| `display` | `'top' \| 'stack' \| 'stack+cache'` | inherits root `display` | Display mode. See [display](#display). |
 
 > Mount strategy is **not** configurable per presenter definition. Set it globally via `presenterDefaults`, or per call via the options below.
 
@@ -512,24 +506,17 @@ Notes:
 - `Enter` and `Space` activate the link.
 - **Forward restoration applies to `push` only.** An overlay opened with `action="push"` is restored when the user goes Back and then Forward. `replace` and `open` are deliberately excluded, because restoring them has no unambiguous meaning.
 
-## display / stack / cache
+## display
 
-Layerge v1.x supports a **single option** `display` (recommended) that represents the same behavior as the old `stack`/`cache` booleans.
+`display` is the only option that controls how a presenter renders its entries. It takes one of three values, and a presenter that does not set its own inherits the root `display` (which itself defaults to `top`).
 
-### `display` (recommended)
+| display | meaning |
+|---|---|
+| `top` | Only the top entry is rendered (lightweight). |
+| `stack` | Entries are stacked for close and history, but lower layers are not rendered. |
+| `stack+cache` | **Visible stacking + freeze** — lower layers stay mounted and can remain visible. |
 
-| display | stack | cache | meaning |
-|---|---:|---:|---|
-| `top` | false | false | Top overlay only (lightweight) |
-| `stack` | true | false | Stacked for close/history, but lower layers are not rendered |
-| `stack+cache` | true | true | **Visible stacking + freeze** (lower layers can remain visible) |
-
-### `stack` / `cache` (compat)
-
-You can still configure `stack` and `cache` as before.
-
-- `cache:true` requires `stack:true` (otherwise it throws)
-- If both `display` and `stack/cache` are provided, **`display` wins**
+Pick `stack+cache` when a lower layer must keep its state and stay on screen (a card stack); `top` otherwise.
 
 ## Constraints
 
@@ -906,8 +893,8 @@ This flow is meant to verify **closeTop/closeAll behavior** when you have multip
 
 - Expected after step 2:
   - Modal is shown on top.
-  - **Note:** In v1, “visible stacking” (rendering lower layers) is enabled only when the *top* presenter is configured with `stack:true && cache:true`.
-    Since `modal` is not (`stack:false, cache:false`), the StackCard layer will be **hidden while the modal is on top** (it is still kept in the internal stack).
+  - **Note:** “Visible stacking” (rendering lower layers) is enabled only when the *top* presenter is configured with `display: 'stack+cache'`.
+    Since `modal` is not (`display: 'top'`), the StackCard layer will be **hidden while the modal is on top** (it is still kept in the internal stack).
 
 Close order:
 
@@ -940,7 +927,7 @@ Close order:
 2. Repeated `push` increases depth
 3. Browser back returns `/page-e → d → c → b → a` while staying `mode:'presenter'`
 4. Returning to `/` results in `mode:'page' depth:0`
-5. With `stack:true & cache:true`, lower layers are visible (stacking)
+5. With `display: 'stack+cache'`, lower layers are visible (stacking)
 6. Non-top layers are not interactable (pointer-events / inert / aria-hidden)
 7. Background is not unnecessarily unmounted/remounted (freeze)
 8. `router.modal.open(Component)` shows overlay without changing the URL

@@ -884,13 +884,10 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         throw new Error(`[Layerge] Unknown display value: ${String(value)}`);
     };
 
-    // デフォルト設定（後方互換性維持）
-    // - displayオプションが指定されている場合はstack/cacheより優先
+    // 既定の表示設定（presenter 側で display を指定しない場合に使います）
     const defaultFromDisplay = parseDisplay(options.display);
-    // displayオプションが指定されている場合はそのstack設定、なければoptions.stackの真偽値
-    const defaultStack = defaultFromDisplay ? defaultFromDisplay.stack : options.stack === true;
-    // displayオプションが指定されている場合はそのcache設定、なければoptions.cacheの真偽値
-    const defaultCache = defaultFromDisplay ? defaultFromDisplay.cache : options.cache === true;
+    const defaultStack = defaultFromDisplay ? defaultFromDisplay.stack : false;
+    const defaultCache = defaultFromDisplay ? defaultFromDisplay.cache : false;
 
     const normalizedPresenters: Record<string, PresenterDefinition> = {};
 
@@ -904,44 +901,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
 
         const defDisplay = parseDisplay(def.display);
 
-        // displayオプションが指定されているのに、stack/cacheも指定されている場合は警告
-        if (defDisplay && (def.stack !== undefined || def.cache !== undefined)) {
-            warnDev('`display` overrides `stack/cache` in presenter definition', {
-                presenter: name,
-                display: def.display,
-                stack: def.stack,
-                cache: def.cache
-            });
-        }
-
-        // displayオプション指定時はそちらを優先、未指定時はdef.stack、さらに未指定時はデフォルト値を使用
-        let normalizedStack;
-
-        if (defDisplay) {
-            normalizedStack = defDisplay.stack;
-        } else if (def.stack !== undefined) {
-            normalizedStack = def.stack === true;
-        } else {
-            normalizedStack = defaultStack;
-        }
-
-        // displayオプション指定時はそちらを優先、未指定時はdef.cache、さらに未指定時はデフォルト値を使用
-        let normalizedCache;
-
-        if (defDisplay) {
-            normalizedCache = defDisplay.cache;
-        } else if (def.cache !== undefined) {
-            normalizedCache = def.cache === true;
-        } else {
-            normalizedCache = defaultCache;
-        }
-
-        // v1.xではcacheを有効にするにはstackが必須（整合性チェック）
-        if (normalizedCache === true && normalizedStack !== true) {
-            throw new Error(
-                `[Layerge] Presenter "${name}" has cache:true but stack:false. cache requires stack in v1.`
-            );
-        }
+        // display 指定時はそちらを優先、未指定時は既定値を使用
+        const normalizedStack = defDisplay ? defDisplay.stack : defaultStack;
+        const normalizedCache = defDisplay ? defDisplay.cache : defaultCache;
 
         // 最終的なdisplay値を決定（cache有効なら'stack+cache'、stack有効なら'stack'、どちらも無効なら'top'）
         const display = normalizedCache ? 'stack+cache' : normalizedStack ? 'stack' : 'top';

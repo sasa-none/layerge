@@ -16,8 +16,7 @@ const createWrapped = (options = {}) => {
         presenters: {
             modal: {component: /** @type {any} */ ({})}
         },
-        stack: true,
-        cache: false
+        display: 'stack'
     });
 
     return wrapped;

@@ -62,11 +62,7 @@ Layerge behavior is intentionally explainable as **three states**:
 | `stack`        | true  | false | Stack entries, but do not guarantee underlying render/state. |
 | `stack+cache`  | true  | true  | Render underlying layers; state tends to stay (cache). |
 
-Backward compatibility:
-
-- Existing `stack/cache` options are still supported.
-- If both `display` and `stack/cache` are provided, `display` wins.
-- `cache:true` requires `stack:true` (Layerge throws otherwise).
+`stack` / `cache` are the internal booleans this table maps to. They are not public options: `display` is the only input (see ROADMAP A-22).
 
 ## 3) `open()` is view-only
 

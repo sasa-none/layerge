@@ -4,25 +4,6 @@ import {createLayergeRouter} from '../layerge/router/createLayergeRouter';
 import {createFakeRouter} from './_helpers/fakeRouter';
 
 describe('createLayergeRouter (v1)', () => {
-    it('throws when cache:true & stack:false', () => {
-        const router = createFakeRouter();
-
-        expect(() => {
-            createLayergeRouter({
-                router: router,
-                stack: false,
-                cache: false,
-                presenters: {
-                    Modal: {
-                        component: /** @type {any} */ ({}),
-                        stack: false,
-                        cache: true
-                    }
-                }
-            });
-        }).toThrow(/cache:true but stack:false/i);
-    });
-
     it('supports display option (default + per presenter)', () => {
         const router = createFakeRouter();
 
@@ -33,6 +14,10 @@ describe('createLayergeRouter (v1)', () => {
                 modal: {
                     component: /** @type {any} */ ({}),
                     display: 'top'
+                },
+                stackCard: {
+                    component: /** @type {any} */ ({}),
+                    display: 'stack'
                 }
             }
         });
@@ -41,10 +26,14 @@ describe('createLayergeRouter (v1)', () => {
         expect(wrapped.$layerge.stackEnabled).toBe(true);
         expect(wrapped.$layerge.cacheEnabled).toBe(true);
 
-        // presenter override
+        // presenter override（display の 3 値すべてが内部表現に対応することを見る）
         expect(wrapped.$layerge.presenters.modal.display).toBe('top');
         expect(wrapped.$layerge.presenters.modal.stack).toBe(false);
         expect(wrapped.$layerge.presenters.modal.cache).toBe(false);
+
+        expect(wrapped.$layerge.presenters.stackCard.display).toBe('stack');
+        expect(wrapped.$layerge.presenters.stackCard.stack).toBe(true);
+        expect(wrapped.$layerge.presenters.stackCard.cache).toBe(false);
     });
 
     it('throws on unknown display value', () => {
@@ -98,8 +87,7 @@ describe('createLayergeRouter (v1)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: true
+            display: 'stack+cache'
         });
 
         expect(wrapped.getLayergeState()).toEqual({mode: 'page', depth: 0});
@@ -135,8 +123,7 @@ describe('createLayergeRouter (v1)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const handle = wrapped.modal.push('/a');
@@ -170,8 +157,7 @@ describe('createLayergeRouter (v1)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const handle = wrapped.modal.push('/a');
@@ -215,8 +201,7 @@ describe('createLayergeRouter (v1)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         wrapped.modal.push(() => Promise.resolve({default: /** @type {any} */ ({})}), {url: '/modal/a'});
@@ -238,8 +223,7 @@ describe('createLayergeRouter (v1)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         wrapped.modal.push(() => Promise.resolve({default: /** @type {any} */ ({})}), {
@@ -260,8 +244,7 @@ describe('createLayergeRouter (v1)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const handle = wrapped.modal.push(() => Promise.resolve({default: /** @type {any} */ ({})}), {url: '/'});
@@ -284,8 +267,7 @@ it('prevents stale commit when navigations race', async () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: true
+            display: 'stack+cache'
         });
 
         wrapped.modal.push('/a');
@@ -328,8 +310,7 @@ it('prevents stale commit when navigations race', async () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: true
+            display: 'stack+cache'
         });
 
         // Start A (pending) but delay it in the first guard.
@@ -366,8 +347,7 @@ it('prevents stale commit when navigations race', async () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: true
+            display: 'stack+cache'
         });
 
         wrapped.modal.push('/fail');

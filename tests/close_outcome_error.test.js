@@ -42,8 +42,7 @@ describe('close outcome carries the navigation error (dev diagnostics)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         // replace-close は returnTo（ここでは '/'）へ復元するため、その遷移が失敗する

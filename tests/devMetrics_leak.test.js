@@ -13,8 +13,7 @@ describe('internals/devMetrics (leak / growth)', () => {
             presenters: {
                 modal: {component: /** @type {any} */ ({})}
             },
-            stack: true,
-            cache: false
+            display: 'stack'
         });
 
         const baseline = __layergeGetDevMetrics(wrapped.$layerge);

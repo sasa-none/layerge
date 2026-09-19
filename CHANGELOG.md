@@ -10,6 +10,8 @@
 
 ### Removed
 
+- The `stack` and `cache` options are gone from both `createLayergeRouter(...)` and each presenter definition. `display` (`'top' | 'stack' | 'stack+cache'`) expresses the same three states and has been the recommended form all along; the booleans were a compatibility alias for a pre-release shape that was never published, so nothing in the wild can depend on them. `display` remains the only input, and the internal `{stack, cache}` representation behind it is unchanged — `$layerge.stackEnabled` / `cacheEnabled` and `$layerge.presenters[name].stack` / `.cache` still hold the derived booleans. Two consequences: the development warning for mixing `display` with `stack`/`cache` is gone (mixing is no longer expressible), and so is the `cache:true but stack:false` error, which `display`'s three values cannot reach.
+
 - The deprecated `fakePath` option is gone from `push` / `replace`. Use `url`, which does the same thing and also accepts a `RouteLocationRaw`. `fakePath` was never part of a published release — the package has not been published — so no existing code can depend on it, and keeping it until 1.0.0 would have made removal a breaking change. The development warning emitted by `open()` now reads `open() ignores url.` (it previously named `fakePath` and referred to a version that was never released).
 
 ### Fixed
