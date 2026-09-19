@@ -58,7 +58,7 @@ export interface PresenterHandle {
     /** 閉じ完了を通知します */
     closed: Promise<void>;
     /** open/push/replace の確定結果を通知します（v3.2 opt-in async 用） */
-    settled: Promise<PresenterAsyncResult>;
+    result: Promise<PresenterAsyncResult>;
     /** 有効状態を返します */
     isActive: boolean;
 }
@@ -77,8 +77,8 @@ export interface PresenterAsyncResult {
 export interface PresenterHandleInternal {
     /** 内部ID */
     _id: string;
-    /** settled を resolve します */
-    _resolveSettled: (value: PresenterAsyncResult) => void;
+    /** result を resolve します */
+    _resolveResult: (value: PresenterAsyncResult) => void;
     /** closed を resolve します */
     _resolveClosed: () => void;
     /** isActive を更新します */
@@ -88,7 +88,7 @@ export interface PresenterHandleInternal {
     /** 閉じ完了を通知します */
     closed: Promise<void>;
     /** open/push/replace の確定結果を通知します */
-    settled: Promise<PresenterAsyncResult>;
+    result: Promise<PresenterAsyncResult>;
     /** 有効状態を返します */
     isActive: boolean;
 }

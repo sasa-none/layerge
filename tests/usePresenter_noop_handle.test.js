@@ -19,15 +19,15 @@ const runOutsidePresenter = (fn) => {
 };
 
 describe('composables/usePresenter (no-op handle)', () => {
-    it('resolves settled as aborted outside a presenter (no branching required)', async () => {
+    it('resolves result as aborted outside a presenter (no branching required)', async () => {
         const presenter = runOutsidePresenter(() => usePresenter());
 
         // Presenter 配下ではないため entry は無く、最上段でもない
         expect(presenter.entry).toBe(null);
         expect(presenter.isTop).toBe(false);
 
-        // settled は「何も起きなかった」を aborted として即座に解決する
-        await expect(presenter.handle.settled).resolves.toEqual({status: 'aborted'});
+        // result は「何も起きなかった」を aborted として即座に解決する
+        await expect(presenter.handle.result).resolves.toEqual({status: 'aborted'});
     });
 
     it('keeps the rest of the handle usable without branching', async () => {
@@ -45,7 +45,7 @@ describe('composables/usePresenter (no-op handle)', () => {
 
     it('exposes the same public status values as a real handle', async () => {
         const presenter = runOutsidePresenter(() => usePresenter());
-        const result = await presenter.handle.settled;
+        const result = await presenter.handle.result;
 
         // 公開ステータスは 4 値に固定されている
         expect(['completed', 'aborted', 'failed', 'superseded']).toContain(result.status);

@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test';
 
-test('v4: beforeEach throw is settled as failed (no pageerror)', async ({page}, testInfo) => {
+test('v4: beforeEach throw resolves result as failed (no pageerror)', async ({page}, testInfo) => {
     /** @type {Error[]} */
     const pageErrors = [];
     /** @type {{type: string, text: string}[]} */
@@ -30,10 +30,10 @@ test('v4: beforeEach throw is settled as failed (no pageerror)', async ({page}, 
 
     await expect.poll(() => oneLineOutcomes.some((l) => /status=failed\b/.test(l.text))).toBeTruthy();
 
-    // ROADMAP A-11: ログ行だけでなく、settled の解決値そのものを検証する。
+    // ROADMAP A-11: ログ行だけでなく、result の解決値そのものを検証する。
     // 以前はここが {status: {traceId, status}} になっており、
     // ログ行しか見ていなかったため検出できていなかった。
-    await expect(page.getByTestId('advanced-settled')).toHaveText('settled: failed');
+    await expect(page.getByTestId('advanced-result')).toHaveText('result: failed');
 
     const failedLine = oneLineOutcomes.find((l) => /status=failed\b/.test(l.text));
     expect(failedLine).toBeTruthy();

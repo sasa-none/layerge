@@ -9,44 +9,44 @@ import type {PresenterAsyncResult, PresenterHandleInternal} from '../types.js';
 const createPresenterHandle = (id: string, onClose: () => void): PresenterHandleInternal => {
     let active = true;
 
-    let settledDone = false;
+    let resultDone = false;
 
-    let settledValue: PresenterAsyncResult | null = null;
+    let resultValue: PresenterAsyncResult | null = null;
 
     let resolveClosed: ((value: void | PromiseLike<void>) => void) | null = null;
 
-    let resolveSettled: ((value: PresenterAsyncResult) => void) | null = null;
+    let resolveResult: ((value: PresenterAsyncResult) => void) | null = null;
 
     const closed = new Promise<void>((r) => {
         resolveClosed = r;
     });
 
-    const settled = new Promise<PresenterAsyncResult>((r) => {
-        resolveSettled = r;
+    const result = new Promise<PresenterAsyncResult>((r) => {
+        resolveResult = r;
     });
 
     /**
-     * resolveSettledOnce - settled を一度だけ解決します
+     * resolveResultOnce - result を一度だけ解決します
      * @param value - 結果
      */
-    const resolveSettledOnce = (value: PresenterAsyncResult): void => {
-        if (settledDone) {
+    const resolveResultOnce = (value: PresenterAsyncResult): void => {
+        if (resultDone) {
             return;
         }
 
-        settledDone = true;
-        settledValue = value;
+        resultDone = true;
+        resultValue = value;
 
-        if (resolveSettled) {
-            const r = resolveSettled;
-            resolveSettled = null;
+        if (resolveResult) {
+            const r = resolveResult;
+            resolveResult = null;
             r(value);
         }
     };
 
     const handle: PresenterHandleInternal = {
         _id: id,
-        _resolveSettled: resolveSettledOnce,
+        _resolveResult: resolveResultOnce,
         _resolveClosed: () => {
             // resolveClosed関数が存在する場合のみ実行（重複実行防止）
             if (resolveClosed) {
@@ -74,12 +74,12 @@ const createPresenterHandle = (id: string, onClose: () => void): PresenterHandle
         get closed() {
             return closed;
         },
-        get settled() {
-            if (settledDone && settledValue) {
-                return Promise.resolve(settledValue);
+        get result() {
+            if (resultDone && resultValue) {
+                return Promise.resolve(resultValue);
             }
 
-            return settled;
+            return result;
         },
         get isActive() {
             return active;

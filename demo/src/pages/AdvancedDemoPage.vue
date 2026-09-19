@@ -53,7 +53,7 @@
                 </button>
             </div>
 
-            <div class="Log" data-testid="advanced-settled">settled: {{ lastSettled || '-' }}</div>
+            <div class="Log" data-testid="advanced-result">result: {{ lastResult || '-' }}</div>
 
             <div class="Log" data-testid="advanced-state">
                 state: {{ state.mode }} / depth={{ state.depth }} | url={{ url }} | lastEntryId={{
@@ -155,15 +155,15 @@ const openComponent = () => {
 };
 
 const pushWithUrl = () => {
-    lastSettled.value = '';
+    lastResult.value = '';
     lastEntryId.value = '';
 
     const handle = router.modal.push(LeaveGuardContent, {url: '/modal/leave-guard'});
 
-    void handle.settled.then((result) => {
-        // settled は {status: <4 値の文字列>} で解決する契約。
+    void handle.result.then((result) => {
+        // result は {status: <4 値の文字列>} で解決する契約。
         // 文字列以外が来た場合は invalid: として可視化する（契約違反の検出用）
-        lastSettled.value =
+        lastResult.value =
             typeof result.status === 'string' ? result.status : `invalid:${JSON.stringify(result.status)}`;
 
         // push+url は URL 遷移を伴うため、nextTick の時点ではまだエントリが積まれていない
@@ -190,7 +190,7 @@ const state = computed(() => router.getLayergeState());
 const url = computed(() => route.fullPath);
 
 const lastEntryId = ref('');
-const lastSettled = ref('');
+const lastResult = ref('');
 
 const asyncLog = ref('');
 

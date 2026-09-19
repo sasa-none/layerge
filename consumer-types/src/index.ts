@@ -116,7 +116,7 @@ const layergeRouter = createLayergeRouter({
 
 const handle: PresenterHandle = layergeRouter.modal.push(SettingsModal, {url: '/modal/settings'});
 
-void handle.settled.then((result: PresenterAsyncResult) => result.status);
+void handle.result.then((result: PresenterAsyncResult) => result.status);
 
 // composable は setup 内で呼ぶものなので、ここでは戻り値の型だけを確認する
 type LayergeState = ReturnType<typeof useLayerge>;

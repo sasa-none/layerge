@@ -24,13 +24,13 @@ const createWrapped = (options = {}) => {
 };
 
 /**
- * settled は公開契約として 4 値の文字列だけを返す。
+ * result は公開契約として 4 値の文字列だけを返す。
  *
  * 失敗系の 2 経路（beforeEach の throw / afterEach の routerFailure）は、
  * 以前 status に Outcome オブジェクトそのものを入れていた（ROADMAP A-11）。
  * 成功系は文字列を返していたため、失敗系だけが壊れていた。
  */
-describe('settled on failure (public contract)', () => {
+describe('result on failure (public contract)', () => {
     it('resolves with the string "failed" when a guard throws', async () => {
         const wrapped = createWrapped();
 
@@ -60,7 +60,7 @@ describe('settled on failure (public contract)', () => {
         expect(result).toEqual({status: 'aborted'});
     });
 
-    it('exposes the same contract through handle.settled', async () => {
+    it('exposes the same contract through handle.result', async () => {
         const wrapped = createWrapped();
 
         wrapped.beforeEach(() => {
@@ -70,7 +70,7 @@ describe('settled on failure (public contract)', () => {
         const handle = wrapped.modal.push('/page-a', {url: '/modal/a'});
         await wrapped._flushAllNavigations();
 
-        const result = await handle.settled;
+        const result = await handle.result;
 
         expect(typeof result.status).toBe('string');
         expect(result).toEqual({status: 'failed'});

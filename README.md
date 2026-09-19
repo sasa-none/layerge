@@ -259,7 +259,7 @@ Returned by `push` / `replace` / `open`.
 |---|---|---|
 | `close()` | `() => void` | Closes this entry. |
 | `closed` | `Promise<void>` | Resolves when the entry has closed. |
-| `settled` | `Promise<PresenterAsyncResult>` | Resolves with the settled outcome only. |
+| `result` | `Promise<PresenterAsyncResult>` | Resolves when **this operation** — the `open` / `push` / `replace` that returned the handle — reaches its final state. It does **not** wait for the entry to close. |
 | `isActive` | `boolean` | Whether this entry is still active. |
 
 `PresenterAsyncResult` is `{status: 'completed' | 'aborted' | 'failed' | 'superseded'}`. These four values are the entire public status surface and will not be extended.
@@ -273,7 +273,30 @@ When each value is used:
 | `failed` | The operation threw — for example a navigation guard raised an error. |
 | `aborted` | The operation did not proceed. This includes **a navigation failure reported by the router**, and anything the library treats internally as "nothing happened". |
 
-> Note the last row. A router-reported navigation failure settles as **`aborted`, not `failed`**. If you are branching on the outcome, do not assume that every unsuccessful operation is `failed` — check for the outcome you care about, or treat anything other than `completed` as unsuccessful.
+> Note the last row. A router-reported navigation failure resolves as **`aborted`, not `failed`**. If you are branching on the outcome, do not assume that every unsuccessful operation is `failed` — check for the outcome you care about, or treat anything other than `completed` as unsuccessful.
+
+#### `result` vs `closed`
+
+They answer different questions, and `result` is the one that is easy to misread.
+
+| Question | Member | Resolves with |
+|---|---|---|
+| Did the operation I just started succeed? | `result` | a `PresenterAsyncResult` |
+| Has this entry gone away? | `closed` | nothing (`void`) |
+
+`result` resolves as soon as **the operation is decided** — committed, cancelled by a guard, superseded by a newer operation, or failed. The overlay is still on screen at that moment. It says nothing about how or when the entry is later closed.
+
+For `push`, `pushAsync()` returns exactly the same outcome, so use whichever reads better:
+
+```js
+const result = await router.modal.pushAsync('/page-a');
+// same outcome as
+const result = await router.modal.push('/page-a').result;
+```
+
+There is no `openAsync` or `replaceAsync`, so for `open` and `replace` the handle's `result` is the only way to await the outcome.
+
+`closed` tells you the entry is gone, not how it went — it resolves with no value. If **you** close an entry, `closeAsync(entryId)` reports that close's outcome. Note that the hook named `settled` on `useLayergeLink` is a different thing again: it fires when a link's whole lifecycle reaches a terminal state, including the close (see [useLayergeLink](#uselayergelinkto-computeattrs-hooks)).
 
 ### `url`
 

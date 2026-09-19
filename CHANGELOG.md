@@ -4,6 +4,8 @@
 
 ### Changed
 
+- `PresenterHandle.settled` is now `PresenterHandle.result`. The semantics are unchanged — it still resolves with the outcome of the `open` / `push` / `replace` that returned the handle, at the same moment and with the same four values — but the old name read as "resolves when this is settled", which invited the reading that it waits for the entry to close. It does not. The internal `_resolveSettled` member is likewise `_resolveResult`. **`LayergeLinkHooks.settled` is deliberately unchanged**: that hook fires when a link's whole lifecycle reaches a terminal state, including the close (`{ok, stage: 'open' | 'close'}`), so its name matches what it does.
+
 - Type definitions are now generated from the TypeScript sources instead of being hand-written, and internal members are stripped from them. Members that were already declared `/** @internal */` — `$layerge.pending`, `$layerge._closeTop` / `_closeAll` / `_closeById` / `_exitPresenterMode` / `_setInvoker` / `_getInvoker` / `_deleteInvoker` / `_notifyEnterDone` / `_notifyLeaveDone` / `_invokers` / `_kept`, and `PresenterEntry._mountKey` / `_leavingIndex` / `_leavingDepth` / `_preMounted` / `_keepMounted` / `_isHidden` / `_keepKey` — no longer appear in the published types. **TypeScript code that reached for them now fails to compile.** They were never part of the public contract: the previous hand-written `index.d.ts` already marked them `@internal`, and the README states that the `_`-prefixed members of `router.$layerge` are internal. Runtime behaviour is unchanged.
 
 ### Removed
@@ -16,9 +18,9 @@
 
 - Dev diagnostics no longer drop the navigation error when closing a presenter. If URL restore fails during `close()`, the `[Layerge][error]` line now carries the actual error (with its stack) instead of only the outcome summary. Development-only output; no public API change.
 
-- `settled` (and therefore `pushAsync()` / `closeAsync()`) now resolves with a plain status string on failure. Two failure paths previously put the whole internal outcome object into `status`, so `settled` resolved with `{status: {traceId: '...', status: 'failed'}}` instead of `{status: 'failed'}`. Code such as `if (result.status === 'failed')` never matched, which meant **failures could not be detected through the API whose purpose is to report them**. Success paths were unaffected.
+- `result` (and therefore `pushAsync()` / `closeAsync()`) now resolves with a plain status string on failure. Two failure paths previously put the whole internal outcome object into `status`, so it resolved with `{status: {traceId: '...', status: 'failed'}}` instead of `{status: 'failed'}`. Code such as `if (result.status === 'failed')` never matched, which meant **failures could not be detected through the API whose purpose is to report them**. Success paths were unaffected.
 
-- `usePresenter()` now returns a no-op handle that includes `settled` when called outside a presenter. It resolves immediately with `{status: 'aborted'}`, matching the `PresenterHandle` contract that `index.d.ts` already declares. Previously `settled` was `undefined` there, so `usePresenter().handle.settled.then(...)` threw outside a presenter and callers were forced to branch — which defeats the purpose of the no-op handle.
+- `usePresenter()` now returns a no-op handle that includes `result` when called outside a presenter. It resolves immediately with `{status: 'aborted'}`, matching the `PresenterHandle` contract that the published types already declare. Previously it was `undefined` there, so `usePresenter().handle.result.then(...)` threw outside a presenter and callers were forced to branch — which defeats the purpose of the no-op handle.
 
 ## 1.0.0 (2026-05-28)
 

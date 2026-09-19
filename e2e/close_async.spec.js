@@ -26,8 +26,8 @@ test.describe('v3.x closeAsync demo', () => {
 
         await page.getByTestId('advanced-push').click();
 
-        // push+url は URL 遷移を伴うため、確定（settled）を待ってから lastEntryId が入る
-        await expect(page.getByTestId('advanced-settled')).toHaveText('settled: completed');
+        // push+url は URL 遷移を伴うため、確定（result）を待ってから lastEntryId が入る
+        await expect(page.getByTestId('advanced-result')).toHaveText('result: completed');
         await expect(page.getByTestId('advanced-state')).not.toContainText('lastEntryId=-');
 
         // Ensure close can proceed without confirmation.

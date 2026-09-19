@@ -1179,7 +1179,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         deleteInvokerInternal(pending.id);
 
         (pending.handle as PresenterHandleInternal)._setActive(false);
-        (pending.handle as PresenterHandleInternal)._resolveSettled({status: 'superseded'});
+        (pending.handle as PresenterHandleInternal)._resolveResult({status: 'superseded'});
         (pending.handle as PresenterHandleInternal)._resolveClosed();
 
         if (pending.traceId && pending.traceSettled !== true) {
@@ -1768,9 +1768,9 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             viewComponent: viewComponent ? viewComponent : null
         });
 
-        // v3.2: opt-in async の settled 対象は「確定（settled）」のみ
+        // v3.2: opt-in async の result 対象は「確定」のみ
         // - open/push/replace が commit された時点で completed とみなす
-        handle._resolveSettled({status: 'completed'});
+        handle._resolveResult({status: 'completed'});
 
         if (preMounted === true) {
             // 最小: mount を先に発生させ、次tickで表示する
@@ -2073,7 +2073,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             });
 
             handle._setActive(false);
-            handle._resolveSettled({status: publicStatus.status});
+            handle._resolveResult({status: publicStatus.status});
             handle._resolveClosed();
         };
 
@@ -2404,7 +2404,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
             },
             pushAsync: async (target, options) => {
                 const handle = presenterNavigate(presenterName, 'push', target, options);
-                return await handle.settled;
+                return await handle.result;
             },
             replace: (target, options) => {
                 return presenterNavigate(presenterName, 'replace', target, options);
@@ -2511,7 +2511,7 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
                         reason: 'routerFailure'
                     });
                     pending.traceSettled = true;
-                    (pending.handle as PresenterHandleInternal)._resolveSettled({
+                    (pending.handle as PresenterHandleInternal)._resolveResult({
                         status: publicStatus.status
                     });
                 }
