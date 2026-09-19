@@ -12,7 +12,7 @@ export type LayergeMode = 'page' | 'presenter';
 export type PresenterKind = 'push' | 'replace' | 'open';
 
 /**
- * PresenterDisplay - Presenter の表示モード（v1.x）
+ * PresenterDisplay - Presenter の表示モード
  */
 export type PresenterDisplay = 'top' | 'stack' | 'stack+cache';
 
@@ -24,7 +24,7 @@ export type PresenterTarget = RouteLocationRaw | Component | (() => Promise<Comp
 /**
  * PresenterOpenOptions - openの第2引数
  *
- * v3.0: openはview-onlyのため、URLオプション（url）は受け付けません
+ * open は view-only のため、URL オプション（url）は受け付けません
  */
 export interface PresenterOpenOptions {
     /** true の場合、表示前にDOMが存在してよい（最小のhidden制御のみ） */
@@ -57,7 +57,7 @@ export interface PresenterHandle {
     close: () => void;
     /** 閉じ完了を通知します */
     closed: Promise<void>;
-    /** open/push/replace の確定結果を通知します（v3.2 opt-in async 用） */
+    /** open/push/replace の確定結果を通知します（opt-in の非同期 API 用） */
     result: Promise<PresenterAsyncResult>;
     /** 有効状態を返します */
     isActive: boolean;
@@ -99,7 +99,7 @@ export interface PresenterHandleInternal {
 export interface PresenterEntry {
     /** エントリID */
     id: string;
-    /** フェーズ（v1.x: enter/active/leave） */
+    /** フェーズ（enter / active / leave） */
     phase?: LayergeEntryPhase;
     /**
      * leave 遷移時点の index
@@ -250,7 +250,7 @@ export interface LayergeStore {
      */
     _transitionManagedEntryIds?: Set<string>;
     /**
-     * entryId と trigger DOM の対応表（v2）
+     * entryId と trigger DOM の対応表
      * @internal
      */
     _invokers?: Map<string, LayergeInvoker>;
@@ -290,17 +290,17 @@ export interface LayergeStore {
      */
     _notifyLeaveDone?: (entryId: string) => void;
     /**
-     * Invokerを登録（v2）
+     * Invokerを登録
      * @internal
      */
     _setInvoker?: (entryId: string, el: HTMLElement) => void;
     /**
-     * Invokerを取得（v2）
+     * Invokerを取得
      * @internal
      */
     _getInvoker?: (entryId: string) => LayergeInvoker | null;
     /**
-     * Invokerを破棄（v2）
+     * Invokerを破棄
      * @internal
      */
     _deleteInvoker?: (entryId: string) => void;
@@ -392,7 +392,7 @@ export interface UseLayergeLinkResult {
 }
 
 /**
- * LayergeInvoker - entryId と trigger DOM を結びつける最小構造（v2）
+ * LayergeInvoker - entryId と trigger DOM を結びつける最小構造
  */
 export interface LayergeInvoker {
     /** エントリID */
@@ -470,11 +470,11 @@ export interface LayergeControlledHooks {
  */
 export interface PresenterApi {
     push(target: PresenterTarget, options?: PresenterPushReplaceOptions): PresenterHandle;
-    /** v3.2: opt-in async（確定結果のみ返す） */
+    /** opt-in の非同期 API（確定結果のみ返す） */
     pushAsync(target: PresenterTarget, options?: PresenterPushReplaceOptions): Promise<PresenterAsyncResult>;
     replace(target: PresenterTarget, options?: PresenterPushReplaceOptions): PresenterHandle;
     open(target: PresenterTarget, options?: PresenterOpenOptions): PresenterHandle;
-    /** v3.2: opt-in async（close の確定結果のみ返す） */
+    /** opt-in の非同期 API（close の確定結果のみ返す） */
     closeAsync(entryId: string, options?: {restoreUrl?: boolean}): Promise<PresenterAsyncResult>;
 }
 
@@ -516,12 +516,12 @@ export interface CreateLayergeRouterOptions<P extends PresenterMap = PresenterMa
     backgroundCompare?: 'fullPath' | 'path';
     /** 既定の表示モード（presenter 側で display を指定しない場合に使います） */
     display?: PresenterDisplay;
-    /** Presenter の mount 既定値（v3.0） */
+    /** Presenter の mount 既定値 */
     presenterDefaults?: {
         preMounted?: boolean;
         keepMounted?: boolean;
         mountPreset?: 'default' | 'keep' | 'pre' | 'prekeep';
     };
-    /** 制御型 hooks（v3.0 / opt-in） */
+    /** 制御型 hooks（opt-in） */
     controlledHooks?: LayergeControlledHooks;
 }
