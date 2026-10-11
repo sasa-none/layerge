@@ -120,12 +120,16 @@ jobs:
       - name: tarball を固定名で生成する
         run: node scripts/pack-for-consumers.mjs
 
-      # consumer は workspace の外側にあるため --ignore-workspace が必要。
+      # 各 consumer は自前の pnpm-workspace.yaml を持つ独立した workspace のルート
+      # なので、リポジトリのルートの workspace には含まれない。--ignore-workspace は
+      # 付けないこと: 付けると consumer の pnpm-workspace.yaml（layerge を
+      # minimumReleaseAge の照会から外す設定）まで無視され、未公開の layerge を
+      # レジストリに照会して 404 で落ちる（pnpm 11.4.0 で実測）。
       # また tarball の integrity は毎回変わるので lockfile は固定できない
       # （lockfile 自体は vue / vue-router / vite の固定に使っている）。
       - name: 消費側をインストールする
         working-directory: ${{ matrix.consumer }}
-        run: pnpm install --ignore-workspace --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       # consumer-types は build を持たず typecheck を持つ。逆も同じなので
       # --if-present で両方を試す（どちらか一方は必ず実行される）

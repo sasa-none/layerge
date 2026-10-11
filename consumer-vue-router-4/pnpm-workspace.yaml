@@ -1,0 +1,12 @@
+# この consumer を独立した workspace のルートにする設定です（ROADMAP B-2 / B-6）。
+#
+# layerge は file:../layerge.tgz（ローカル tarball）から入れるため、pnpm 11 の
+# 供給網ポリシー（minimumReleaseAge）がレジストリへ照会すると 404 になります。
+# 公開後も、ローカル tarball に対するこの照会には意味がありません。
+#
+# pnpm 11 はこの設定を .npmrc からは読まず、--ignore-workspace を付けると
+# この pnpm-workspace.yaml 自体も無視します（実測）。そのため CI では
+# --ignore-workspace を付けずに install します。最寄りの pnpm-workspace.yaml が
+# ここにあるので、リポジトリのルートの workspace には含まれません。
+minimumReleaseAgeExclude:
+  - layerge
