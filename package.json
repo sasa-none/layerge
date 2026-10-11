@@ -1,8 +1,21 @@
 {
     "name": "layerge",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "description": "Presenter-style overlay navigation for Vue Router",
     "license": "MIT",
+    "author": {
+        "name": "Yukiya Sasa",
+        "email": "yukiya.sasa+layerge@gmail.com",
+        "url": "https://github.com/sasa-none"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sasa-none/layerge.git"
+    },
+    "homepage": "https://github.com/sasa-none/layerge#readme",
+    "bugs": {
+        "url": "https://github.com/sasa-none/layerge/issues"
+    },
     "type": "module",
     "sideEffects": false,
     "files": [
@@ -11,6 +24,9 @@
         "LICENSE",
         "README.md"
     ],
+    "publishConfig": {
+        "access": "public"
+    },
     "main": "./dist/index.cjs",
     "module": "./dist/index.mjs",
     "types": "./dist/types/index.d.ts",

@@ -2,6 +2,12 @@
 
 Layerge is a Vue Router extension that adds **presenter-style navigation** (overlay / stacked overlays) with a minimal API.
 
+> **Status: 0.x, experimental.** Layerge is published so that it can be used in real
+> projects and shaped by what they need. The API is expected to change between minor
+> versions, and no compatibility promise is made until 1.0.0. It is going into the
+> author's own projects first; you are welcome to use it too, but pin the exact version
+> and read the changelog on every update.
+
 - Written in **TypeScript**. Type declarations are generated from the source at build time, for both ESM and CJS consumers.
 - Presenter behavior is configured with a single `display` option.
 - URL integration uses `url`; `mountPreset` controls mounting; `controlledHooks` can cancel operations.
@@ -63,7 +69,7 @@ Validated in this release candidate with:
 - `vue-router@5`
 
 `vue-router@5` support is verified here by packed-tarball consumer install/build checks.
-If your app still uses legacy `next()`-style guards, Vue Router 5 may emit deprecation warnings at runtime; that cleanup is separate from Layerge's packaging compatibility for v1.0.0.
+If your app still uses legacy `next()`-style guards, Vue Router 5 may emit deprecation warnings at runtime; that cleanup is separate from Layerge's packaging compatibility.
 
 ## Quick Start
 
@@ -102,9 +108,9 @@ Place `LayergeView` once in your app layout:
 ```
 
 > LayergeView is intended to be mounted once at the app root.
-> The overlay root is viewport-based (`position: fixed`). Container-scoped overlays are out of scope for v1.x.
+> The overlay root is viewport-based (`position: fixed`). Container-scoped overlays are out of scope.
 
-> In v1, `createLayergeRouter()` automatically wires provide / global registration via Vue Router's `install()`.
+> `createLayergeRouter()` automatically wires provide / global registration via Vue Router's `install()`.
 
 ## Everyday usage
 
@@ -131,7 +137,7 @@ const bindings = usePresenterBindings((entry) => {
 // template: <div v-bind="bindings"> ... </div>
 ```
 
-`usePresenterBindings()` is also the *official* way to access the minimal **public entry state** in v1.x.
+`usePresenterBindings()` is also the *official* way to access the minimal **public entry state**.
 
 ### `<LayergeTransition>`
 
@@ -157,7 +163,7 @@ So even if you attach `@after-enter/@after-leave`, Layerge notifications still r
 
 ## Public API
 
-> All of the following is available in the published `1.0.0` package.
+> All of the following is available in the published package. During 0.x, any of it may change between minor versions — see the changelog.
 
 ### `createLayergeRouter(options)`
 
@@ -185,7 +191,7 @@ const router = createLayergeRouter({
 It adds to the router:
 
 - `router[presenterName]` — the presenter API described below
-- `router.$layerge` — the internal store (treat as read-only; its `_`-prefixed members are internal)
+- `router.$layerge` — the internal store. Read it for debugging; do not depend on it. See [Internal members](#internal-members).
 - `router.exitPresenterMode()` — force-exit presenter mode
 - `router.getLayergeState()` — returns `{mode, depth}`
 
@@ -564,6 +570,30 @@ Layerge **does** guarantee:
 - Presenter bindings via `usePresenterBindings()`
 - Transition notifications via `<LayergeTransition>`
 
+## Internal members
+
+Layerge's runtime objects carry members that the published type definitions do not
+declare. This applies to `router.$layerge`, to the presenter entries inside it, to the
+presenter definitions in `$layerge.presenters`, and to the handle returned by `open` /
+`push` / `replace`.
+
+They are there because the published types are generated from the sources with
+`stripInternal`: the type definitions are filtered, the runtime objects are not. What
+you get back at runtime is the same object Layerge uses internally.
+
+**The published type definitions are the contract.** If a member does not appear in
+them, it is internal — whether or not its name starts with an underscore.
+
+You are welcome to read these members while debugging. Inspecting `$layerge.stack` in
+devtools to see why an overlay did not close is a reasonable thing to do, and Layerge
+will not stop you. What is not supported is depending on them from application code:
+reading them in a computed, writing to them, or calling them. They can change name,
+change meaning, or disappear in any release, including a patch release, and such a
+change will not be described as breaking.
+
+If you find yourself needing an internal member to do something real, that is worth
+reporting as a gap in the public API rather than working around.
+
 ## Advanced
 
 - Mapper / adapter patterns are available for people who want full control.
@@ -599,7 +629,7 @@ Notes:
 
 ### Async consistency
 
-Layerge v1.x is designed around a simple rule:
+Layerge is designed around a simple rule:
 
 > **Latest wins.** If a newer presenter navigation starts while an older one is still pending (e.g. due to guard delays), the older one is considered **superseded**.
 
@@ -713,7 +743,7 @@ Behavior notes:
 
 ### Case Study: Stacking multiple pages (naive vs sequential)
 
-Layerge v1.x is designed so that **the latest operation wins**. If you issue multiple `push()` calls back-to-back (while earlier navigations are still pending due to guards/loader delays), earlier navigations may be **canceled** and will not be committed.
+Layerge is designed so that **the latest operation wins**. If you issue multiple `push()` calls back-to-back (while earlier navigations are still pending due to guards/loader delays), earlier navigations may be **canceled** and will not be committed.
 
 This means a "naive" loop like this will typically end up committing **only the last** navigation:
 

@@ -2,48 +2,111 @@
 
 ## Unreleased
 
-### Changed
+The first public release of Layerge, as **0.1.0**. Nothing has been published before
+it, so this section describes **what the release contains** rather than how it differs
+from a previous one. There is no earlier version for anything here to be added to,
+removed from, or fixed relative to. At publication this heading becomes `## 0.1.0`
+with the actual release date.
 
-- `PresenterHandle.settled` is now `PresenterHandle.result`. The semantics are unchanged — it still resolves with the outcome of the `open` / `push` / `replace` that returned the handle, at the same moment and with the same four values — but the old name read as "resolves when this is settled", which invited the reading that it waits for the entry to close. It does not. The internal `_resolveSettled` member is likewise `_resolveResult`. **`LayergeLinkHooks.settled` is deliberately unchanged**: that hook fires when a link's whole lifecycle reaches a terminal state, including the close (`{ok, stage: 'open' | 'close'}`), so its name matches what it does.
+Layerge is released at 0.x on purpose. It is being put into real projects first, and
+the API will be cut and reshaped by what those projects actually need before anything
+is frozen at 1.0.0. Expect breaking changes between minor versions; each one is
+recorded here.
 
-- Type definitions are now generated from the TypeScript sources instead of being hand-written, and internal members are stripped from them. Members that were already declared `/** @internal */` — `$layerge.pending`, `$layerge._closeTop` / `_closeAll` / `_closeById` / `_exitPresenterMode` / `_setInvoker` / `_getInvoker` / `_deleteInvoker` / `_notifyEnterDone` / `_notifyLeaveDone` / `_invokers` / `_kept`, and `PresenterEntry._mountKey` / `_leavingIndex` / `_leavingDepth` / `_preMounted` / `_keepMounted` / `_isHidden` / `_keepKey` — no longer appear in the published types. **TypeScript code that reached for them now fails to compile.** They were never part of the public contract: the previous hand-written `index.d.ts` already marked them `@internal`, and the README states that the `_`-prefixed members of `router.$layerge` are internal. Runtime behaviour is unchanged.
+The development history that led here is in the repository's git log, and a labelled
+snapshot of one earlier phase is kept at the end of this file.
 
-### Removed
+### Presenter navigation
 
-- The `stack` and `cache` options are gone from both `createLayergeRouter(...)` and each presenter definition. `display` (`'top' | 'stack' | 'stack+cache'`) expresses the same three states and has been the recommended form all along; the booleans were a compatibility alias for a pre-release shape that was never published, so nothing in the wild can depend on them. `display` remains the only input, and the internal `{stack, cache}` representation behind it is unchanged — `$layerge.stackEnabled` / `cacheEnabled` and `$layerge.presenters[name].stack` / `.cache` still hold the derived booleans. Two consequences: the development warning for mixing `display` with `stack`/`cache` is gone (mixing is no longer expressible), and so is the `cache:true but stack:false` error, which `display`'s three values cannot reach.
+- `createLayergeRouter({router, presenters, ...})` extends a Vue Router instance with
+  presenter navigation. It adds `router[presenterName]`, `router.$layerge`,
+  `router.exitPresenterMode()` and `router.getLayergeState()`.
+- Each presenter exposes `push`, `replace` and `open`, plus the async forms
+  `pushAsync` and `closeAsync`.
+- `open` is **view-only**: it renders a target over the current route and never
+  navigates. `open(RouteLocationRaw)` is accepted only for the current route, so the
+  URL and the content cannot disagree.
+- `target` accepts a loader (`() => import('./Overlay.vue')`, recommended), a Vue
+  component, or a `RouteLocationRaw`.
+- The `url` option lets `push` / `replace` move the URL while rendering the component
+  you gave them, which is what makes an overlay survive a reload and respond to the
+  back button. It accepts a string or a `RouteLocationRaw`.
+- `closeTop({restoreUrl?})` / `closeAll({restoreUrl?})` close entries, and `returnTo`
+  (default: `from.fullPath`) decides where the URL is restored to.
 
-- The deprecated `fakePath` option is gone from `push` / `replace`. Use `url`, which does the same thing and also accepts a `RouteLocationRaw`. `fakePath` was never part of a published release — the package has not been published — so no existing code can depend on it, and keeping it until 1.0.0 would have made removal a breaking change. The development warning emitted by `open()` now reads `open() ignores url.` (it previously named `fakePath` and referred to a version that was never released).
+### Display modes
 
-### Fixed
+- `display: 'top' | 'stack' | 'stack+cache'` configures a presenter, either as the
+  router-wide default or per presenter definition. `'stack'` keeps lower layers in the
+  stack for close and history without rendering them; `'stack+cache'` also keeps their
+  component state alive.
 
-- The published type definitions now resolve under `moduleResolution: "node16"` / `"nodenext"`. The declarations used extensionless relative specifiers, which ESM resolution rejects, so consumers on that setting were told that `createLayergeRouter`, `useLayerge`, `usePresenter`, `useLayergeLink` and `usePresenterBindings` **did not exist**. Relative specifiers now carry `.js`, and the component declarations are additionally published under the `*.d.vue.ts` name that node16 / nodenext looks for. `moduleResolution: "bundler"` (Vite, webpack) was unaffected and keeps working. The runtime bundles are unchanged — this is a type-only fix. A TypeScript consumer is now type-checked against the packed tarball in CI (`skipLibCheck: false`), so the published types cannot silently regress again.
+### Latest wins
 
-- Dev diagnostics no longer drop the navigation error when closing a presenter. If URL restore fails during `close()`, the `[Layerge][error]` line now carries the actual error (with its stack) instead of only the outcome summary. Development-only output; no public API change.
+- When a newer presenter navigation starts while an older one is still pending — guard
+  delays, a slow loader, rapid clicks — the older one is **superseded** and does not
+  commit. Stale navigations cannot roll Layerge's state backwards, and a navigation
+  that the router cancels or fails does not commit either.
 
-- `result` (and therefore `pushAsync()` / `closeAsync()`) now resolves with a plain status string on failure. Two failure paths previously put the whole internal outcome object into `status`, so it resolved with `{status: {traceId: '...', status: 'failed'}}` instead of `{status: 'failed'}`. Code such as `if (result.status === 'failed')` never matched, which meant **failures could not be detected through the API whose purpose is to report them**. Success paths were unaffected.
+### Operation outcomes
 
-- `usePresenter()` now returns a no-op handle that includes `result` when called outside a presenter. It resolves immediately with `{status: 'aborted'}`, matching the `PresenterHandle` contract that the published types already declare. Previously it was `undefined` there, so `usePresenter().handle.result.then(...)` threw outside a presenter and callers were forced to branch — which defeats the purpose of the no-op handle.
+- `push` / `replace` / `open` return a handle with `close()`, `closed`, `result` and
+  `isActive`. `result` resolves when the operation itself settles, with one of
+  `completed`, `aborted`, `failed` or `superseded`; `closed` resolves when the entry
+  has actually closed. `pushAsync` and `closeAsync` return the same four-value result
+  directly. These four values are the entire public status surface.
 
-## 1.0.0 (2026-05-28)
+### Leave animations
 
-### Added
+- Entries being closed are retained in the DOM until their leave transition reports
+  completion, so a leave animation is never cut off by the navigation that triggered
+  it. `<LayergeTransition>` wires the notifications for you; `<LayergeView>` renders
+  the overlay root; `<LayergeLink>` provides a `RouterLink`-compatible trigger.
 
-- New presenter option `display: 'top' | 'stack' | 'stack+cache'` (recommended). Existing `stack/cache` remain supported for compatibility.
-- URL restoration on close for `replace(...,{fakePath})` via `returnTo` (default: `from.fullPath`).
-- Advanced close options: `closeTop({restoreUrl?: boolean})` / `closeAll({restoreUrl?: boolean})`.
-- Expanded E2E coverage to lock the above behaviors (Playwright).
+### Composables
 
-### Changed
+- `usePresenter`, `useLayerge`, `usePresenterBindings`, `useLayergeLink` and
+  `usePresenterLeaveGuard`. `usePresenterBindings()` is the supported way to read the
+  public entry state; `usePresenterLeaveGuard()` lets a presenter block or defer its
+  own close.
 
-- `open()` is documented and treated as **view-only**: it never navigates.
-  - `open(Component|loader)` is the recommended form.
-  - `open(RouteLocationRaw)` is allowed only for the **current** route to avoid URL/content mismatch.
-- Clarified separation of responsibilities: `closeTop/closeAll` (user close) vs `exit()` (force exit).
+### Opt-in control
+
+- `controlledHooks` (`beforeOpen`, `beforeNavigate`, `beforeClose`) can cancel an
+  operation before it commits.
+- `preMounted`, `keepMounted` and `mountPreset` control when a presenter's DOM is
+  created and whether it is kept on close.
+- `debug: true` enables development logging, and decision traces record why a given
+  operation reached its outcome. Both are development-only and carry bounded buffers.
+
+### Packaging
+
+- Ships ESM and CommonJS builds with TypeScript definitions generated from the
+  sources. The definitions resolve under `moduleResolution: "bundler"` and under
+  `"node16"` / `"nodenext"` for both the `import` and `require` conditions; a
+  TypeScript consumer is type-checked against the packed tarball in CI with
+  `skipLibCheck: false`.
+- Peer range is `vue@^3.4` with `vue-router@^4.2 || ^5.0`, and both router majors are
+  verified by consumer install-and-build checks against the packed tarball. Requires
+  Node 20 or newer.
 
 ### Notes
 
-- If both `display` and `stack/cache` are provided, `display` wins.
-- `open(...,{fakePath})` is ignored (dev warns when `debug:true`).
+- Runtime objects carry members that the published type definitions do not declare.
+  The type definitions are the contract; anything absent from them is internal and may
+  change in any release. See "Internal members" in the README.
+- A `url` that points at a path with no matching route will 404 on reload unless your
+  app provides a catch-all or a bridge route. The demo shows both.
+- Server-side rendering is out of scope, and behaviour across multiple tabs is
+  undefined.
+
+---
+
+The section below is a snapshot of a development phase from before the package was
+published. It is kept as a record of how the design arrived where it did, and it is
+**not a description of the released API** — some of what it mentions, such as the
+`fakePath` option, does not exist in the published package. It is left unedited on
+purpose.
 
 ## Pre-public milestone 1.1.0 (2026-01-05)
 
