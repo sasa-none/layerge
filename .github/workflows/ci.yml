@@ -12,8 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # engines.node は >=20。最小サポート版で検証する
-  NODE_VERSION: '20'
+  # packageManager の pnpm 11 は Node.js 22.13 以上を要求する（node:sqlite を使う）。
+  # 20 では setup-node 直後の pnpm store path で落ちるため、CI は 22 で回す。
+  # engines.node（>=20）は利用者向けの要件なので据え置き。食い違いは ROADMAP C-3 で扱う
+  NODE_VERSION: '22'
 
 jobs:
   lint-and-test:
