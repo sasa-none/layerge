@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (2026-10-11)
 
 The first public release of Layerge, as **0.1.0**. Nothing has been published before
 it, so this section describes **what the release contains** rather than how it differs

@@ -29,10 +29,30 @@ npm レジストリ上で `layerge` という名前は**未使用であること
 | P0-3 | README 冒頭に 0.x / experimental の注記、`1.0.0` への言及 2 箇所を修正 | Cowork | ✅ 2026-09-21 |
 | P0-4 | CHANGELOG の冒頭を 0.1.0 の枠組みに、0.x で出す理由を明記 | Cowork | ✅ 2026-09-21 |
 | P0-5 | 未コミットの変更（README / CHANGELOG / 本書 / `package.json` / `LICENSE`）をコミット | Code | ✅ 2026-10-11 |
-| P0-6 | `git tag v0.1.0` → `npm publish`（scoped でなければ `--access` 不要） | ユーザー | 未 |
-| P0-7 | **公開後の検証**: 新規ディレクトリで `npm i layerge@0.1.0` し、`consumer-types` と同じ tsconfig で `tsc --noEmit` が通ること。tarball ではなくレジストリからの解決を初めて検証する唯一の機会 | Code | 未 |
+| P0-6 | `git tag v0.1.0` → `npm publish` | ユーザー | ✅ 2026-10-11 06:51 UTC。integrity `sha512-EcdOZNo8…` が dry-run・CI consumer・レジストリの 3 箇所で一致 |
+| P0-7 | **公開後の検証**: 新規ディレクトリで `npm i layerge@0.1.0` し、`consumer-types` と同じ tsconfig で `tsc --noEmit` が通ること。tarball ではなくレジストリからの解決を初めて検証する唯一の機会 | Code | ✅ 2026-10-11（結果は下記「P0-7 の結果」） |
 
 P0-7 だけは公開前にできません。CI の consumer は tarball を見ており、レジストリの `exports` 解決・`files` の実際の中身・`.d.vue.ts` の配布は、公開して初めて本物の検証になります。**公開直後、次のプロジェクトで使う前に必ず通してください。**
+
+
+#### 公開時の記録（2026-10-11）
+
+- `npm publish` は受理後「Your package is being processed and may take a few minutes」となり、npm が `0.0.0-stage`（2 ファイル・329 バイト・"Temporary package placeholder for staged publishing"）を先に置いて名前を確保、36 秒後に 0.1.0 が `latest` になった。**新規パッケージの初回公開ではこの挙動が標準**で、レジストリを直後に見ると 0.1.0 が無いように見える。慌てないこと。
+- `0.0.0-stage` はバージョン一覧に残る。npm 側で消えなければ `npm deprecate layerge@0.0.0-stage` を検討（P0-7 の後）。
+- **Cowork の手順漏れ**: 台帳に「公開時に CHANGELOG の見出しを `## 0.1.0 (実公開日)` へ」と書いておきながら、publish 前のチェックに入れなかった。公開物の CHANGELOG は `## Unreleased` のまま。次回以降は「publish 直前チェック」として、`version` / CHANGELOG 見出し / `git tag` の 3 点を一つの手順にする。
+- CJS ビルドの `EMPTY_IMPORT_META` 警告 4 件は想定どおり（`import.meta` が `{}` になり、`typeof import.meta.env` のガードで分岐がスキップされる）。`smoke-dist` が `require()` で 9 エクスポートを確認済み。警告自体を消すなら `vite.config.js` の CJS 出力に `define: {'import.meta': {}}` を明示する（C 項目。挙動は変わらない）。
+
+#### P0-7 の結果（2026-10-11）
+
+リポジトリ外の新規ディレクトリで `npm i layerge@0.1.0 vue vue-router typescript`（npm、レジストリから取得。入ったのは typescript 7.0.2 / vue-router 5.4.0 / vue 3.5.43）。
+
+1. **ESM / nodenext**: `consumer-types` と同じ tsconfig・`src/index.ts` で `tsc --noEmit` エラー 0。`layerge` → `dist/types/index.d.ts`、コンポーネント 3 つは `.d.vue.ts` で解決。`has no exported member` は 0 件。存在しない export の import で TS2305 が出ることを確認（検査は機能している）
+2. **CJS**: `cjs-probe.cts` を加えてエラー 0。`require` 条件で `dist/types/index.d.cts` に解決
+3. **実行時**: ESM（`dist/index.mjs`）・CJS（`dist/index.cjs`）とも 9 エクスポートが `smoke-dist.mjs` の `EXPECTED_EXPORTS` と完全一致（欠落・余分・空なし）
+4. **配布物**: `npm pack layerge@0.1.0 --dry-run` の 47 ファイルが `verify-pack.mjs` の期待一覧と完全一致（`.d.vue.ts` 3 / `.d.cts` 19 / `.d.ts` 19、サイズ 0 なし）。integrity はレジストリと手元 HEAD のビルドで同一（`sha512-EcdOZNo8…`）
+5. **bundler 解決（Vite）**: 最小構成（vite 8.3.4）で `layerge` を import した `.ts` の `vite build` が成功。`moduleResolution: bundler` + `skipLibCheck: false` の `tsc --noEmit` もエラー 0
+
+TypeScript 7 と vue-router 5 の組み合わせで型検査が通ったのは、CI（TypeScript 6 / vue-router 4）を補う一度きりの実測です。B-9 の常設の対処にはなりません。
 
 ### 段階計画（0.1.0 → 1.0.0）
 
@@ -128,7 +148,7 @@ P0-7 だけは公開前にできません。CI の consumer は tarball を見�
 | A-4 `package.json` メタデータ | ✅ **完了** | — | 2026-10-11。公開先 `github.com/sasa-none/layerge`（既存の個人アカウントを `sasa-none` へ改名して使う）、作者・著作権者 `Yukiya Sasa`、新規アカウント・Organization は作らない。GitHub 上の作業は本人が行う（A-4 本文） |
 | A-15 `settled` の意味論 | ✅ **完了** | — | 2026-09-20 / `d50bf83`（`handle.result` へ改名。`hooks.settled` は据え置き） |
 | A-17 内部メンバーの実行時露出 | ✅ **完了** | — | 2026-09-20。README に「Internal members」節を追加（Cowork 対応・P0-5 でコミット） |
-| A-20 CHANGELOG の体裁 | ✅ **完了** | — | 2026-09-20。`Unreleased` に統合済み。**公開時に `## 0.1.0 (実公開日)` へ変更すること**（2026-09-21 に 0.x 方針へ変更） |
+| A-20 CHANGELOG の体裁 | ✅ **完了** | — | 2026-09-20。`Unreleased` に統合済み。⚠️ **公開時の見出し変更を漏らした**（0.1.0 の tarball 内は `## Unreleased` のまま）。リポジトリ側は P0-7 で `## 0.1.0 (2026-10-11)` に修正 |
 | A-21 型定義 JSDoc のバージョン表記 | ✅ **完了** | — | 2026-09-20 / `8e901e3` |
 | A-22 `stack` / `cache` の互換エイリアス | ✅ **完了** | — | 2026-09-20 / `621df25` |
 | A-23 README 散文のバージョン表記 | ✅ **完了** | — | 2026-09-20。残るのは 66 行の `v1.0.0`（実公開版）のみ |
@@ -1454,6 +1474,29 @@ B-2 は 2026-09-17 に「対応済み」としましたが、**GitHub Actions �
 
 ライブラリの `engines` は利用者向けの要件で、Node 20 で動くと宣言している。一方、開発ツールチェーン（pnpm 11）は Node 22 を要求するため、**CI は Node 22 でしか走らず、Node 20 での動作は検証されない。** これは C-3（Node のバージョンマトリクス）の具体的な中身になる。選択肢は、(a) consumer ジョブだけ Node 20 でも回す、(b) `engines` を `>=22` に上げる。0.1.0 では (a) も (b) も保留し、C-3 で決める。
 
+
+#### 2 回目の失敗と修正（2026-10-11 / `fa2a45a` → `299f56e`）
+
+Node 22 への修正（`fa2a45a`）で最初の壁は越えましたが、次に consumer 3 ジョブが `pnpm install` で落ちました。
+
+```
+[ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION]
+  layerge@1.0.0 could not be checked against minimumReleaseAge
+  (GET https://registry.npmjs.org/layerge: Not Found - 404)
+```
+
+**原因の正確な名前**: lockfile の陳腐化ではなく、**ローカル tarball（`file:../layerge.tgz`）に対して pnpm 11 の供給網ポリシー（`minimumReleaseAge`）がレジストリ照会を行っていた**こと。`layerge` は未公開なので 404。公開後も、tarball から入れているパッケージをレジストリの公開日で検査することに意味はなく、問題は消えない。
+
+ローカルで一度も出なかったのは、ストアにすべてキャッシュ済みで供給網の検査が走らなかったため（B-6 で「実害なし」と記録した consumer lockfile の問題が、pnpm 11 のポリシーと組み合わさって CI を止めた形）。
+
+**修正**（`299f56e`）: consumer 3 つの `pnpm-workspace.yaml` に `minimumReleaseAgeExclude: [layerge]` を置く。lockfile は git 管理のまま、`--no-frozen-lockfile` もそのまま。
+
+**Code が実測で判明させた前提の違い**: pnpm 11.4.0 はこの設定を `.npmrc` からは読まず（3 通りの書式すべて `undefined`）、`pnpm-workspace.yaml` からのみ読む。さらに **`--ignore-workspace` を付けると consumer 直下の `pnpm-workspace.yaml` 自体が無視される**。そのため CI の consumer install から `--ignore-workspace` を外した。各 consumer が自前の `pnpm-workspace.yaml` を持つことで最寄りの workspace ルートになり、リポジトリのルートの workspace には含まれない（ルートの lockfile と `node_modules` に差分が出ないことを実測）。元々 `--ignore-workspace` を付けていた目的は、このファイルの存在で満たされる。
+
+**結果**: run 38118973271 で **5 ジョブすべて緑**。consumer 3 つのログで `+ layerge 0.1.0` と、ビルドまたは型検査が実際に走ったことを確認済み。`--if-present` で素通りしたジョブは無い。
+
+Code は意図的に古い lockfile（`version: 1.0.0`）をコミットせずに残し、CI が古い lockfile から再解決して通ることを実証した。これは良い検証設計で、「lockfile が最新だから通った」のか「再解決が機能するから通った」のかを切り分けている。
+
 ### B-3. consumer の tarball 参照 ✅ 対応済み（2026-09-18）
 
 コミット `b1133fc`。推奨案の 2（固定名へのリネーム）が採用されました。
@@ -1551,6 +1594,25 @@ A-19 で追加した `consumer-types` は `vue-router@^4.6.3` を固定してお
 consumer の lockfile は tarball の integrity を含むため、ソースが変わるたびに古くなります（B-2 で `--no-frozen-lockfile` を使う理由）。git 管理から外す選択肢もありますが、その場合 `vue` / `vue-router` / `vite` の固定が失われます。**現状維持で実害はありません。**判断が必要になったときのための記録です。
 
 ---
+
+
+#### 実測記録（2026-10-11）: 差分は毎回出ます
+
+pnpm 11.4.0 で `pnpm install --no-frozen-lockfile` を実行すると、consumer 3 つの lockfile に**それぞれ 2 行**の差分が出ます。
+
+```diff
+   layerge@file:../layerge.tgz:
+-    resolution: {integrity: sha512-GyQG2J59…, tarball: file:../layerge.tgz}
+-    version: 1.0.0
++    resolution: {integrity: sha512-EcdOZNo8…, tarball: file:../layerge.tgz}
++    version: 0.1.0
+```
+
+変わるのは `layerge` の integrity と version だけ。他の依存と `settings` 節は変わらず、`minimumReleaseAgeExclude` が lockfile に書き込まれることもない。**ライブラリを変えるたびに tarball の integrity が変わるので、この 2 行の差分は今後も毎回出る。** CI は `--no-frozen-lockfile` で再解決するので影響しない。
+
+**運用**: consumer の lockfile のこの 2 行の差分は、ライブラリ変更のコミットに**含めても含めなくてもよい**。含めれば lockfile が最新を指し、含めなければ CI が再解決する。どちらでも緑になることは B-2 で実証済み。ただし **lockfile だけを単独でコミットしない**こと（意味の無い差分がノイズになる）。
+
+恒久的に消したいなら、consumer の lockfile を git 管理から外す（案 1）。vue / vue-router / vite のパッチ版固定を失うが、consumer は「メジャー内で動く」ことの検証なので実害は小さい。0.x のあいだは現状維持で十分。
 
 ## 優先度 C — 継続的に整えるもの
 
