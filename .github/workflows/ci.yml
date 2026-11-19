@@ -51,7 +51,11 @@ jobs:
 
   e2e:
     name: e2e (Playwright)
-    runs-on: ubuntu-latest
+    # ubuntu-latest は 2026-10-11 の実行では 24.04、2026-11-19 の実行では 26.04 だった。
+    # Playwright 1.60.0 は 26.04 に chromium を入れられない
+    # （"Playwright does not support chromium on ubuntu26.04-x64"）ため、
+    # 26.04 対応の Playwright へ上げるまで 24.04 に固定する
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
