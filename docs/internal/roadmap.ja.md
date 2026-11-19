@@ -1,6 +1,6 @@
 # npm 公開に向けた残課題
 
-最終更新: 2026-10-11（0.1.0 公開・P0-7 完了。次は段階 1）
+最終更新: 2026-11-19（0.1.1 公開。段階 1 のバグ修正パッチ）
 
 このドキュメントは、Layerge を npm に公開するまでに残っている作業を記録します。
 優先度は「公開の可否に直結するか」で判断しています。
@@ -55,6 +55,21 @@ P0-7 だけは公開前にできません。CI の consumer は tarball を見�
 5. **bundler 解決（Vite）**: 最小構成（vite 8.3.4）で `layerge` を import した `.ts` の `vite build` が成功。`moduleResolution: bundler` + `skipLibCheck: false` の `tsc --noEmit` もエラー 0
 
 TypeScript 7 と vue-router 5 の組み合わせで型検査が通ったのは、CI（TypeScript 6 / vue-router 4）を補う一度きりの実測です。B-9 の常設の対処にはなりません。
+
+#### 0.1.1 の公開（2026-11-19）
+
+段階 1 の方針どおり、バグ修正のみのパッチ。中身は `0743f32`（[#1](https://github.com/sasa-none/layerge/issues/1) の対応。非同期 `beforeClose` の二重呼び出しの修正と、close ガードの適用範囲の文書化）だけ。
+
+- 手順: CI が緑の `95a8ce6` に `v0.1.1` を付けてから `npm publish`。0.1.0 の教訓どおり version・CHANGELOG 見出し・tag を一つの手順で揃えた（公開物の CHANGELOG も `## 0.1.1 (2026-11-19)`）
+- **`npm publish --ignore-scripts` で公開する手順にした。**開発機で mise の pnpm が有効になっておらず、`prepublishOnly`（`npm run build` → `pnpm build:types`）が失敗するため。代わりに HEAD のクリーンビルドを verify-pack / smoke-dist / `npm pack --dry-run` で検証してから公開し、下記 1 の integrity の一致で中身が同一であることを確かめた。pnpm が使える環境なら通常の `npm publish` でよい
+- 公開準備の途中で、CI の e2e だけが落ちていることに気づいた。`ubuntu-latest` が 24.04 から 26.04 に移り、Playwright 1.60.0 が chromium を入れられないため（コード変更とは無関係）。`7e1769a` で e2e ジョブだけ `ubuntu-24.04` に固定した。**26.04 対応の Playwright に上げたら固定を外すこと**
+
+公開後の検証（リポジトリ外の新規ディレクトリで `npm i layerge@0.1.1 vue vue-router typescript`。入ったのは typescript 7.0.2 / vue-router 5.5.1 / vue 3.5.45）:
+
+1. **integrity**: レジストリ・手元の `npm pack --dry-run`・インストール時の lockfile の 3 箇所で `sha512-8o3yQMao…4WQ4hA==` が一致。47 ファイル（0.1.0 と同数）
+2. **型**: `consumer-types` と同じ tsconfig・`src/index.ts` + `cjs-probe.cts` で `tsc --noEmit` エラー 0。ESM は `dist/types/index.d.ts`、CJS は `index.d.cts` に解決。存在しない export の import で TS2305 が出ることを確認（検査は機能している）
+3. **実行時**: ESM（`dist/index.mjs`）・CJS（`dist/index.cjs`）とも 9 エクスポートが `smoke-dist.mjs` の `EXPECTED_EXPORTS` と完全一致（欠落・余分・空なし）
+4. **中身**: `dist/index.mjs` に修正（開始済みの `beforeClose` を await する形）、`types.d.ts` / `types.d.cts` に適用範囲の JSDoc、README に「When close guards run」節が入っていることを確認
 
 ### 段階計画（0.1.0 → 1.0.0）
 
