@@ -76,6 +76,8 @@ TypeScript 7 と vue-router 5 の組み合わせで型検査が通ったのは�
 
 **やること**:
 - 段階 1 の使用 API 一覧に**無いもの**を削除候補にする。`display` / `mountPreset` / `controlledHooks` / `usePresenterLeaveGuard` / DecisionTrace / `pushAsync` / `closeAsync` のうち、使わなかったものは原則削る。
+- `controlledHooks.beforeClose` / `usePresenterLeaveGuard()` を**残す場合は**、適用範囲をブラウザの戻る・進むとアプリのルート遷移まで広げるかも判断する。0.1.x では `handle.close()` / `closeTop()` / `closeAsync()` に限ると文書化し、[#1](https://github.com/sasa-none/layerge/issues/1) は 2026-11-19 に close した。広げる場合の論点は #1 の本文にある（Back を拒否したときの履歴の戻し方、確認 UI 自体が Presenter のときの再入、複数の entry が同時に閉じるときに 1 回だけ問い合わせること、`ctx.action` に何を渡すか）。
+    - 関連: Layerge の `beforeEach` は、遷移先が背景か stack 内の場合、**遷移の確定前に**オーバーレイを閉じる。後から登録されたガードが遷移を中止すると、URL はそのままでオーバーレイだけが閉じる。アプリ側でルート遷移を止める回避策が `createLayergeRouter()` より前の登録を要するのはこのため。広げるならここも合わせて直す。
 - 削除は破壊的変更として CHANGELOG に記録する（0.x なので許される）。
 - 目安: `createLayergeRouter.ts` を **1,000 行以下**。これは根拠のある数字ではなく「一晩で読める」の代理指標なので、使用実績と衝突したら実績を優先する。
 - コメントを英語に揃えるかは、この段階で決める（外部貢献者を想定するなら英語。想定しないなら日本語のまま）。

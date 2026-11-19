@@ -442,6 +442,46 @@ it('prevents stale commit when navigations race', async () => {
         expect(wrapped.$layerge.stack[0].route.fullPath).toBe('/a');
     });
 
+    it.each([
+        {name: 'cancels', allow: false, expectedDepth: 1, expectedActive: true},
+        {name: 'allows', allow: true, expectedDepth: 0, expectedActive: false}
+    ])(
+        'controlledHooks: async beforeClose is called once per close ($name)',
+        async ({allow, expectedDepth, expectedActive}) => {
+            const router = createFakeRouter();
+
+            /** @type {string[]} */
+            const calls = [];
+
+            const wrapped = createLayergeRouter({
+                router: router,
+                presenters: {
+                    modal: {component: /** @type {any} */ ({})}
+                },
+                controlledHooks: {
+                    beforeClose: async (ctx) => {
+                        calls.push(ctx.action);
+                        return allow;
+                    }
+                }
+            });
+
+            const handle = wrapped.modal.push('/a');
+            await router._flushAllNavigations();
+
+            handle.close();
+
+            // async の beforeClose が確定するまで待つ
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            await router._flushAllNavigations();
+
+            // 確認 UI が 2 回出ないよう、1 回の close で hook は 1 回だけ呼ばれる
+            expect(calls).toEqual(['close']);
+            expect(wrapped.$layerge.stack.length).toBe(expectedDepth);
+            expect(handle.isActive).toBe(expectedActive);
+        }
+    );
+
     it('controlledHooks: latest-wins abort cancels superseded open attempt', async () => {
         const router = createFakeRouter();
 

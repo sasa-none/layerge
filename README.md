@@ -354,7 +354,7 @@ createLayergeRouter({
 | Hook | When |
 |---|---|
 | `beforeOpen` | Before an entry opens |
-| `beforeClose` | Before an entry closes |
+| `beforeClose` | Before an entry is closed by `handle.close()`, `closeTop()` or `closeAsync()`. See [When close guards run](#when-close-guards-run). |
 | `beforeNavigate` | Before Layerge navigates |
 
 Each receives `ctx: {entryId, action, signal, fromFullPath?, toFullPath?}` and returns:
@@ -369,6 +369,25 @@ Each receives `ctx: {entryId, action, signal, fromFullPath?, toFullPath?}` and r
 `ctx.signal` is an `AbortSignal` for latest-wins cancellation. **Do not apply the result of a superseded attempt.**
 
 > Local guards registered with `usePresenterLeaveGuard()` are evaluated **before** the global `controlledHooks`.
+
+#### When close guards run
+
+`controlledHooks.beforeClose` and `usePresenterLeaveGuard()` are consulted only when your code asks Layerge to close an entry:
+
+- `handle.close()`
+- `closeTop()`
+- `closeAsync(entryId)`
+
+Only the entry being closed is asked. If it is not the top entry, the entries above it close along with it without being asked.
+
+They are **not** consulted when an entry closes for any other reason. The entry closes immediately, and nothing the guards return can keep it open:
+
+- Browser Back / Forward, including `router.back()` and `router.go()`
+- A navigation your app starts through Vue Router (`router.push()`, `<RouterLink>`, ...)
+- `closeAll()`
+- `exit()`
+
+Reloading or closing the tab is handled separately: while `dirty` or `pending` is true, `usePresenterLeaveGuard()` turns on a `beforeunload` prompt.
 
 ## Composables
 
@@ -448,9 +467,9 @@ Returns `{entryId, dirty, pending}`.
 Behavior notes:
 
 - If `dirty` is false and nothing is pending, the close proceeds without asking.
-- If `confirm` is omitted but `dirty` is true, Layerge falls back to `window.confirm(message)`. **Provide `confirm` if you want your own UI** — this fallback exists only so that a guard is never silently skipped.
+- If `confirm` is omitted but `dirty` is true, Layerge falls back to `window.confirm(message)`. **Provide `confirm` if you want your own UI** — this fallback exists only so that a dirty guard is not skipped just because `confirm` is missing.
 - While `dirty` or `pending` is true, a `beforeunload` guard is activated.
-- Guards from multiple entries are evaluated with AND logic; any `false` cancels.
+- The guard is consulted only for the closes listed in [When close guards run](#when-close-guards-run). Browser Back, route changes and `closeAll()` close the entry without asking.
 - An exception thrown inside the guard does **not** block the close.
 
 ### `useLayergeLink(to, computeAttrs?, hooks?)`
@@ -626,6 +645,7 @@ When closing the top entry, URL restoration depends on how that entry was opened
 Notes:
 
 - To close UI without URL restoration (advanced), pass `{restoreUrl:false}`.
+- `closeAll()` and `exit()` close entries without consulting `beforeClose` or leave guards. See [When close guards run](#when-close-guards-run).
 
 ### Async consistency
 

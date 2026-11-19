@@ -150,16 +150,33 @@ const createDemoRouter = () => {
 
     window.__layergeDemoFlags = window.__layergeDemoFlags || {
         cancelClose: false,
+        asyncClose: false,
         cancelOpen: false,
         cancelNavigate: false
     };
+
+    // demo only: beforeClose が呼ばれた回数（E2E で「1 回の close で 1 回」を確かめる）
+    window.__layergeDemoBeforeCloseCalls = 0;
 
     const layergeRouter = createLayergeRouter({
         router: router,
         debug: true,
         controlledHooks: {
             beforeClose: () => {
-                return window.__layergeDemoFlags?.cancelClose ? false : true;
+                window.__layergeDemoBeforeCloseCalls += 1;
+
+                const allow = window.__layergeDemoFlags?.cancelClose ? false : true;
+
+                // asyncClose が有効な場合は、確認 UI を待つアプリを模して Promise で返す
+                if (window.__layergeDemoFlags?.asyncClose) {
+                    return new Promise((resolve) => {
+                        window.setTimeout(() => {
+                            resolve(allow);
+                        }, 50);
+                    });
+                }
+
+                return allow;
             },
             beforeOpen: () => {
                 return window.__layergeDemoFlags?.cancelOpen ? false : true;

@@ -1288,11 +1288,14 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
      * closeByIdInternalAsync - ID を指定して Presenter を閉じます（await用）
      * @param id - 対象ID
      * @param [options] - オプション
+     * @param [startedBeforeClose] - 同期パスで開始済みの beforeClose の結果。
+     *   渡された場合は hook を呼び直さずにこれを待ちます（1 回の close で hook を 2 回呼ばないため）
      * @returns 結果
      */
     const closeByIdInternalAsync = async (
         id: string,
-        options?: {restoreUrl?: boolean} | undefined
+        options?: {restoreUrl?: boolean} | undefined,
+        startedBeforeClose?: Promise<{ok: boolean; signal: AbortSignal}> | undefined
     ): Promise<import('../types.js').PresenterAsyncResult> => {
         const traceId = createId('trace');
 
@@ -1435,14 +1438,18 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
 
             let gate = {ok: true};
 
-            if (hasControlledHook('beforeClose')) {
+            // beforeClose が同期パスで開始済み、または指定されている場合のみ結果を待つ
+            if (startedBeforeClose || hasControlledHook('beforeClose')) {
                 try {
                     decisionTraceStore.push(traceId, 'runHook', {hook: 'beforeClose'});
                 } catch {
                     // ignore
                 }
 
-                gate = await runControlledHookMaybe('beforeClose', {entryId: id, action: 'close'});
+                // 開始済みならその結果を待ち、未開始ならここで呼び出す
+                // NOTE: 開始済みの hook を呼び直すと、1 回の close で確認 UI が 2 回出る
+                gate = await (startedBeforeClose ??
+                    runControlledHookMaybe('beforeClose', {entryId: id, action: 'close'}));
             }
 
             if (!gate || gate.ok === false) {
@@ -1537,11 +1544,13 @@ const createLayergeRouter = <P extends PresenterMap = PresenterMap>(
         if (hasControlledHook('beforeClose')) {
             const gateMaybe = runControlledHookMaybe('beforeClose', {entryId: id, action: 'close'});
 
+            // Promise が返った場合は、開始済みの結果を async パスに引き渡す
+            // NOTE: async パスで hook を呼び直すと、1 回の close で確認 UI が 2 回出る
             if (
                 gateMaybe &&
                 typeof (gateMaybe as Promise<{ok: boolean; signal: AbortSignal}>).then === 'function'
             ) {
-                closeByIdInternalAsync(id, options);
+                closeByIdInternalAsync(id, options, gateMaybe as Promise<{ok: boolean; signal: AbortSignal}>);
                 return;
             }
 

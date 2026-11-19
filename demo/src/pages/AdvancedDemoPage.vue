@@ -34,6 +34,10 @@
                 <input type="checkbox" v-model="flags.cancelClose" data-testid="advanced-cancel-close" />
                 cancelClose (beforeClose)
             </label>
+            <label class="Row">
+                <input type="checkbox" v-model="flags.asyncClose" data-testid="advanced-async-close" />
+                asyncClose (beforeClose returns a Promise)
+            </label>
 
             <div class="Buttons">
                 <button type="button" class="Btn" data-testid="advanced-open" @click="openComponent">
@@ -79,9 +83,15 @@
                     closes.
                 </li>
                 <li>
-                    When opened via
-                    <b>push+url</b>
-                    , using the browser back button should also trigger the guard.
+                    The guard runs only for
+                    <code>handle.close()</code>
+                    ,
+                    <code>closeTop()</code>
+                    and
+                    <code>closeAsync()</code>
+                    . Browser Back, route changes and
+                    <code>closeAll()</code>
+                    close the presenter without asking.
                 </li>
             </ul>
         </div>
@@ -140,7 +150,12 @@ const layerge = useLayerge();
 
 // Window flags are initialized in demo/src/router.js
 const flags = reactive(
-    window.__layergeDemoFlags ?? {cancelOpen: false, cancelNavigate: false, cancelClose: false}
+    window.__layergeDemoFlags ?? {
+        cancelOpen: false,
+        cancelNavigate: false,
+        cancelClose: false,
+        asyncClose: false
+    }
 );
 window.__layergeDemoFlags = flags;
 

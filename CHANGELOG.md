@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- An async `controlledHooks.beforeClose` was called **twice** for a single
+  `handle.close()` or `closeTop()` when the entry had no `usePresenterLeaveGuard()`,
+  so a confirmation dialog shown from the hook appeared twice. It is now called once.
+
+### Documentation
+
+- `controlledHooks.beforeClose` and `usePresenterLeaveGuard()` are consulted only for
+  `handle.close()`, `closeTop()` and `closeAsync()`. Browser Back / Forward, route
+  changes started by the app, `closeAll()` and `exit()` close entries without asking.
+  The README now says so. It previously described `beforeClose` as running "before an
+  entry closes", and said guards from multiple entries were combined with AND logic,
+  which Layerge has never done. ([#1](https://github.com/sasa-none/layerge/issues/1))
+
 ## 0.1.0 (2026-10-11)
 
 The first public release of Layerge, as **0.1.0**. Nothing has been published before

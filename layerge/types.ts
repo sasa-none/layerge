@@ -459,7 +459,11 @@ export interface LayergeControlledHookContext {
 export interface LayergeControlledHooks {
     /** open/push/replace の開始前（falseで中止） */
     beforeOpen?: (ctx: LayergeControlledHookContext) => boolean | void | Promise<boolean | void>;
-    /** close 前（falseで中止） */
+    /**
+     * handle.close() / closeTop() / closeAsync() による close の前（falseで中止）
+     * - 問い合わせるのは閉じる対象の entry だけです。その上に積まれた entry は問い合わせずに一緒に閉じます
+     * - ブラウザの戻る・進む、アプリのルート遷移、closeAll() / exit() では呼ばれません
+     */
     beforeClose?: (ctx: LayergeControlledHookContext) => boolean | void | Promise<boolean | void>;
     /** push/replace の router ナビ前（falseで中止） */
     beforeNavigate?: (ctx: LayergeControlledHookContext) => boolean | void | Promise<boolean | void>;

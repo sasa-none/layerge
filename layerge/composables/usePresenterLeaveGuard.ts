@@ -161,6 +161,10 @@ export const __layergeHasPresenterLeaveGuard = (entryId: string): boolean => {
  * - confirm: dirty=true の close 時に呼び出す確認（Presenter責務）
  *
  * Layergeは confirm UI を提供しません。
+ *
+ * ガードを参照するのは handle.close() / closeTop() / closeAsync() による close だけです。
+ * ブラウザの戻る・進む、アプリのルート遷移、closeAll() / exit() では参照せずに閉じます。
+ * タブを閉じる・再読み込みする場合は、dirty / pending の間だけ beforeunload で確認します。
  * @param opts - opts
  * @param opts.dirty - 編集有無
  * @param opts.pending - 処理中
